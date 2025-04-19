@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/lohitashwavaswani/Desktop/ACWT/Ecommerce-Microservices/recommend_search_env"
+VIRTUAL_ENV="/Users/lohitashwavaswani/Desktop/ACWT/Ecommerce-Microservices/recommendation_and_search_system/recommend_search_env"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

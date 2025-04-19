@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/Users/lohitashwavaswani/Desktop/ACWT/Ecommerce-Microservices/recommend_search_env"
+set -gx VIRTUAL_ENV "/Users/lohitashwavaswani/Desktop/ACWT/Ecommerce-Microservices/recommendation_and_search_system/recommend_search_env"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH
