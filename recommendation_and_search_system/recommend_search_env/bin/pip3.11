@@ -1,4 +1,4 @@
-#!/Users/lohitashwavaswani/Desktop/ACWT/Ecommerce-Microservices/recommend_search_env/bin/python
+#!/Users/lohitashwavaswani/Desktop/ACWT/Ecommerce-Microservices/recommendation_and_search_system/recommend_search_env/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
