@@ -1,0 +1,44 @@
+services:
+  # mongodb:
+  #   image: mongo:7
+  #   container_name: mongodb
+
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongo_data:/data/db
+
+  products_service:
+    image: products_service
+    build:
+      context: ./products
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      # - mongodb://localhost:27017
+      # - MONGO_URI=mongodb://mongodb:27017/ecommerce_db
+        - MONGO_URI=mongodb://host.docker.internal:27017
+    # depends_on:
+    #   - mongodb
+    volumes:
+      - ./products:/app
+
+  cart_service:
+    image: cart_service
+    build:
+      context: ./cart
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      # - mongodb://localhost:27017
+      # - MONGO_URI=mongodb://mongodb:27017/ecommerce_db
+        - MONGO_URI=mongodb://host.docker.internal:27017
+    # depends_on:
+    #   - mongodb
+    volumes:
+      - ./cart:/app
+volumes:
+  mongo_data:
+

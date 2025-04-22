@@ -4,13 +4,13 @@ from typing import Optional
 from models import Order
 import requests
 from datetime import datetime
-
-
+import os
 
 app = FastAPI()
 
 # MongoDB Connection
-MONGO_URI = "mongodb://localhost:27017"
+# MONGO_URI = "mongodb://localhost:27017"
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = "ecommerce_db"
 Collection = "cart"
 
@@ -42,7 +42,7 @@ async def get_user_transactions(user_id: int):
 
 @app.post("/insert_user_transactions/{user_id}/{product_id}/{quantity}")
 async def create_post(user_id: int, product_id: int, quantity: int):
-    product_response = requests.get(f"http://localhost:8000/get_product/{product_id}")
+    product_response = requests.get(f"http://products_service:8000/get_product/{product_id}")
     if product_response.status_code != 200:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -53,8 +53,8 @@ async def create_post(user_id: int, product_id: int, quantity: int):
     order = Order(
         order_id=106,  # We have to generate dynamically
         user_id=user_id,
-        product_cart=[{"product_id": product_id, "quantity": quantity, "price": product_data["price"]}],
-        total_amount=product_data["price"] * quantity,
+        product_cart=[{"product_id": product_id, "quantity": quantity, "price": product_data["discount_price"]}],
+        total_amount=product_data["discount_price"] * quantity,
         payment_method="Credit Card",
         created_at=datetime.utcnow(),
     )
