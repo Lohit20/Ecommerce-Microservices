@@ -2,11 +2,13 @@ from fastapi import FastAPI, HTTPException
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional,List, Dict, Any
 from models import Product
+import os
 
 app = FastAPI()
 
 # MongoDB Connection
-MONGO_URI = "mongodb://localhost:27017"
+# MONGO_URI = "mongodb://localhost:27017"
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = "ecommerce_db"
 Collection = "products"
 
