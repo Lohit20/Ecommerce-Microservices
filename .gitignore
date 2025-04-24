@@ -1,0 +1,24 @@
+# Bytecode and cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+*/**/*_venv/
+
+# Environment variable files
+*.env
+
+# VS Code settings (optional)
+.vscode/
+
+# macOS specific files
+.DS_Store
+
+# Python packaging artifacts (just in case)
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Logs
+*.log
