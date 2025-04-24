@@ -1,7 +1,5 @@
 from pydantic import BaseModel
 
-
-
 # Pydantic model
 class Product(BaseModel):
     product_id: int

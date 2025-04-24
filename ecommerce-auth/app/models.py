@@ -1,18 +1,20 @@
 ##Create User Model and Database Logic/Schema
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
+
+
 
 #Pydantic model for user registration request
 
 class UserRegister(BaseModel):
-    email: EmailStr
     username: str
+    email: EmailStr
     password: str 
+    address: str = Field(..., example="123 Main St, London")
+    phone_number: str = Field(..., example="+44 7911 123456")
 
     
-    class Config:
-        orm_mode = True
 
 
 #Pydantic model for login request
@@ -22,8 +24,6 @@ class UserLogin(BaseModel):
     password: str
 
 
-    class Config:
-        orm_mode = True
 
 
 #Optional JWT token data (used in auth later)

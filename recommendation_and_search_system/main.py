@@ -92,3 +92,5 @@ async def aggregate_recommendations(top_n: int = 5) -> Dict[str, List[Product]]:
 @app.get("/recommendations", response_model=Dict[str, List[Product]])
 async def fetch_recommendations():
     return await aggregate_recommendations()
+
+
