@@ -29,10 +29,10 @@ const Header = () => {
             </button>
             <ul className="nav-links">
               <li><Link to="/">Home</Link></li>
-              <li><Link to="/category/men">Men</Link></li>
-              <li><Link to="/category/women">Women</Link></li>
-              <li><Link to="/category/girls">Girls</Link></li>
-              <li><Link to="/category/boys">Boys</Link></li>
+              <li><Link to="/category/men's clothing">Men</Link></li>
+              <li><Link to="/category/women's clothing">Women</Link></li>
+              <li><Link to="/category/girls' clothing">Girls</Link></li>
+              <li><Link to="/category/boys' clothing">Boys</Link></li>
               <li><Link to="/category/sale">Sale</Link></li>
             </ul>
           </nav>

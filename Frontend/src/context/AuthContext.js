@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services/api';
 
 // Create the context
 const AuthContext = createContext();
@@ -8,6 +9,21 @@ export const useAuth = () => {
   return useContext(AuthContext);
 };
 
+// Import debug utilities with safe fallbacks
+let logComponentMount, logError, logContextState;
+try {
+  const debugUtils = require('../utils/debugUtils');
+  logComponentMount = debugUtils.logComponentMount;
+  logError = debugUtils.logError;
+  logContextState = debugUtils.logContextState;
+} catch (e) {
+  // Provide fallback implementations if debug utils can't be loaded
+  logComponentMount = (componentName) => console.log(`Component mounted: ${componentName}`);
+  logError = (error, source) => console.error(`Error in ${source}:`, error);
+  logContextState = (contextName, state) => console.log(`${contextName} state:`, state);
+  console.warn('Debug utilities could not be loaded, using fallbacks');
+}
+
 // Provider component
 export const AuthProvider = ({ children }) => {
   // State to track if user is authenticated
@@ -16,58 +32,86 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   // Loading state for initial auth check
   const [loading, setLoading] = useState(true);
+  // Error state
+  const [error, setError] = useState(null);
+
+  // Log component mount
+  useEffect(() => {
+    try {
+      logComponentMount('AuthProvider');
+      console.log('AuthProvider mounted - checking authentication status');
+    } catch (e) {
+      console.log('AuthProvider mounted - checking authentication status');
+    }
+  }, []);
 
   // Check if user is logged in on initial load
   useEffect(() => {
-    // In a real app, you would verify the token with your backend
     const checkAuthStatus = () => {
-      const token = localStorage.getItem('authToken');
-      const savedUser = localStorage.getItem('user');
-      
-      if (token && savedUser) {
-        setIsAuthenticated(true);
-        setUser(JSON.parse(savedUser));
+      try {
+        console.log('Checking authentication status...');
+        const token = localStorage.getItem('authToken');
+        const savedUser = localStorage.getItem('user');
+        
+        if (token && savedUser) {
+          console.log('Found auth token and user data in localStorage');
+          setIsAuthenticated(true);
+          setUser(JSON.parse(savedUser));
+          try {
+            logContextState('AuthContext', { isAuthenticated: true, user: JSON.parse(savedUser) });
+          } catch (e) {
+            console.log('AuthContext state updated: isAuthenticated=true');
+          }
+        } else {
+          console.log('No auth token or user data found in localStorage');
+          try {
+            logContextState('AuthContext', { isAuthenticated: false, user: null });
+          } catch (e) {
+            console.log('AuthContext state updated: isAuthenticated=false');
+          }
+        }
+      } catch (error) {
+        try {
+          logError(error, 'AuthProvider.checkAuthStatus', { localStorage: { authToken: !!localStorage.getItem('authToken'), user: !!localStorage.getItem('user') } });
+        } catch (e) {
+          console.error('Error checking auth status:', error);
+        }
+        console.error('Error checking auth status:', error);
+        // Reset auth state on error
+        setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
     
     checkAuthStatus();
   }, []);
 
   // Login function
-  const login = (userData) => {
-    // In a real app, you would send credentials to your backend
-    // and receive a token and user data in response
-    
-    // For demo purposes, we'll simulate a successful login if email contains '@'
-    // This allows us to simulate login failures for testing
-    if (!userData.email.includes('@')) {
-      return { success: false, message: 'Invalid email or password' };
+  const login = async (userData) => {
+    try {
+      setError(null);
+      const response = await authService.login(userData);
+      
+      const { token, user } = response.data;
+      
+      // Store auth data in localStorage
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      // Update state
+      setUser(user);
+      setIsAuthenticated(true);
+      
+      return { success: true };
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      return { 
+        success: false, 
+        message: err.response?.data?.message || 'Invalid credentials. Please try again.' 
+      };
     }
-    
-    const mockUser = {
-      id: '123',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: userData.email,
-      phone: '+1 (555) 123-4567',
-      address: '123 Main Street, Apt 4B',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      country: 'United States'
-    };
-    
-    // Store auth data in localStorage
-    localStorage.setItem('authToken', 'mock-jwt-token');
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    
-    // Update state
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    
-    return { success: true };
   };
 
   // Logout function
@@ -79,28 +123,41 @@ export const AuthProvider = ({ children }) => {
     // Update state
     setUser(null);
     setIsAuthenticated(false);
+    setError(null);
   };
 
   // Register function
-  const register = (userData) => {
-    // In a real app, you would send registration data to your backend
-    // For demo purposes, we'll simulate a successful registration
-    console.log('Registered user:', userData);
-    
-    // Simulate validation - check if email is valid
-    if (!userData.email.includes('@')) {
-      return { success: false, message: 'Invalid email format. Please try again.' };
+  const register = async (userData) => {
+    try {
+      setError(null);
+      const response = await authService.register(userData);
+      
+      const { token, user } = response.data;
+      
+      // Store auth data in localStorage
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      // Update state
+      setUser(user);
+      setIsAuthenticated(true);
+      
+      return { success: true };
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      return { 
+        success: false, 
+        message: err.response?.data?.message || 'Registration failed. Please try again.' 
+      };
     }
-    
-    // Automatically log in after registration
-    return login(userData);
   };
 
   // Context value
   const value = {
-    user,
     isAuthenticated,
+    user,
     loading,
+    error,
     login,
     logout,
     register

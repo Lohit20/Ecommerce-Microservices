@@ -103,101 +103,8 @@
   animation: expandWidth 0.8s ease-out;
 }
 
-/* Social Auth Buttons */
-.social-auth {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 30px;
-  animation: fadeIn 0.8s ease-out 0.1s both;
-}
-
-.social-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  background-color: #fff;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
-}
-
-.social-btn span {
-  margin-left: 12px;
-  font-weight: 500;
-  z-index: 1;
-  transition: transform 0.3s ease;
-}
-
-.social-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  transition: width 0.3s ease, height 0.3s ease;
-}
-
-.social-btn:hover::before {
-  width: 300px;
-  height: 300px;
-}
-
-.social-btn:hover span {
-  transform: translateX(5px);
-}
-
-.social-btn.google:hover {
-  background-color: #f8f8f8;
-  border-color: #ccc;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-}
-
-.social-btn.facebook {
-  background-color: #3b5998;
-  border-color: #3b5998;
-  color: #fff;
-}
-
-.social-btn.facebook:hover {
-  background-color: #344e86;
-  border-color: #344e86;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Divider */
-.divider {
-  position: relative;
-  text-align: center;
-  margin: 30px 0;
-  animation: fadeIn 0.8s ease-out 0.2s both;
-}
-
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background-color: #ddd;
-  background-image: linear-gradient(to right, transparent, rgba(0,0,0,0.1), transparent);
-}
-
-.divider span {
-  position: relative;
-  background-color: #fff;
+/* Auth Form Styles */
+.auth-description {
   padding: 0 15px;
   color: #777;
   font-size: 14px;
@@ -366,6 +273,27 @@
   align-items: flex-start;
 }
 
+.checkbox-container.inline-terms {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: row;
+  gap: 8px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.checkbox-container.inline-terms input {
+  margin-right: 0;
+  margin-top: 3px;
+  cursor: pointer;
+  min-width: 16px;
+  height: 16px;
+  position: relative;
+  flex-shrink: 0;
+}
+
 .checkbox-container input {
   margin-right: 12px;
   margin-top: 3px;
@@ -379,11 +307,24 @@
   line-height: 1.5;
 }
 
+.checkbox-container.inline-terms label {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  line-height: 1.4;
+  padding-top: 0;
+  white-space: normal;
+  width: calc(100% - 24px);
+}
+
 .checkbox-container a {
   color: #000;
   text-decoration: none;
   font-weight: 500;
   position: relative;
+  display: inline-block;
+  margin: 0 3px;
+  white-space: nowrap;
 }
 
 .checkbox-container a::after {

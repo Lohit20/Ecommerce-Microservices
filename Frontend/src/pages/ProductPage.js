@@ -80,41 +80,160 @@ const ProductPage = () => {
     }
   }, [cart, getProductQuantityInCart, loading]);
 
-  // Mock data - in a real app, you would fetch this from your MongoDB backend
+  // State for error handling
+  const [error, setError] = useState(null);
+
+  // Fetch product data from backend
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const mockProduct = {
-        id: parseInt(id),
-        name: 'Classic Cotton Button-Down Shirt',
-        price: 49.99,
-        description: 'A versatile and timeless button-down shirt crafted from premium cotton fabric. This classic piece features a comfortable regular fit, durable buttons, and a clean, crisp finish that transitions seamlessly from casual to formal occasions.',
-        rating: 4.5,
-        reviews: 128,
-        sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-        colors: ['White', 'Light Blue', 'Black', 'Navy'],
-        images: [
-          'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1620012253295-c15cc3e65df4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1584865288642-42078afe6942?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-        ],
-        features: [
-          '100% premium cotton fabric',
-          'Regular comfortable fit',
-          'Machine washable',
-          'Reinforced stitching at stress points',
-          'Sustainable manufacturing process',
-        ],
-        inStock: true,
-      };
-      
-      setProduct(mockProduct);
-      setSelectedSize(mockProduct.sizes[0]);
-      setSelectedColor(mockProduct.colors[0]);
-      setLoading(false);
-    }, 500);
+    const fetchProduct = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Import ProductService dynamically to avoid circular dependencies
+        const ProductService = (await import('../services/ProductService')).default;
+        const productData = await ProductService.getProduct(id);
+        
+        if (!productData) {
+          throw new Error('Product not found');
+        }
+        
+        // Transform backend product model to match frontend expectations
+        const transformedProduct = {
+          id: productData.product_id || productData.id,
+          name: productData.name,
+          price: productData.price,
+          description: productData.description,
+          rating: productData.ratings || productData.rating || 0,
+          reviews: productData.review_count || productData.reviews || 0,
+          sizes: productData.sizes || ['S', 'M', 'L', 'XL'],
+          colors: productData.colors || ['Black', 'White', 'Blue', 'Red'],
+          images: productData.images && productData.images.length > 0 
+            ? productData.images 
+            : [
+                'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1516257984-b1b4d707412e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+              ],
+          category: productData.category,
+          stock: productData.stock || 10,
+          brand: productData.brand || 'Fashion Brand',
+          features: productData.features || [
+            '100% premium cotton fabric',
+            'Regular comfortable fit',
+            'Machine washable',
+            'Reinforced stitching at stress points',
+            'Sustainable manufacturing process',
+          ],
+          inStock: productData.stock > 0 || true
+        };
+        
+        setProduct(transformedProduct);
+        setSelectedSize(transformedProduct.sizes[0]);
+        setSelectedColor(transformedProduct.colors[0]);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        setError(error.message || 'Failed to load product details');
+        setLoading(false);
+      }
+    };
+    
+    fetchProduct();
   }, [id]);
+  
+  // Fetch product recommendations
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState(null);
+  
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (!product.id) return;
+      
+      setLoadingRecommendations(true);
+      setRecommendationsError(null);
+      
+      try {
+        // Import ProductService dynamically to avoid circular dependencies
+        const ProductService = (await import('../services/ProductService')).default;
+        const recommendedProductsData = await ProductService.getRecommendations(product.id);
+        
+        if (!recommendedProductsData || !Array.isArray(recommendedProductsData) || recommendedProductsData.length === 0) {
+          throw new Error('No recommendations available');
+        }
+        
+        // Transform recommended products to match frontend expectations
+        const transformedRecommendations = recommendedProductsData.map(item => ({
+          id: item.product_id || item.id,
+          name: item.name,
+          price: item.price,
+          originalPrice: item.original_price || (item.discount > 0 ? item.price / (1 - item.discount / 100) : item.price * 1.2),
+          rating: item.ratings || item.rating || 4.5,
+          reviews: item.review_count || item.reviews || Math.floor(Math.random() * 100) + 20,
+          category: item.category,
+          image: item.images && item.images.length > 0 ? item.images[0] : 
+                 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+          sale: item.discount > 0 || (item.original_price && item.price < item.original_price)
+        }));
+        
+        setRelatedProducts(transformedRecommendations);
+        setLoadingRecommendations(false);
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+        setRecommendationsError(error.message || 'Failed to load recommendations');
+        
+        // Fallback to default related products if API fails
+        setRelatedProducts([
+          {
+            id: parseInt(id) + 1,
+            name: "Slim Fit Denim Jeans",
+            price: 59.99,
+            originalPrice: 79.99,
+            rating: 4.3,
+            reviews: 56,
+            category: "men",
+            image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80",
+            sale: true
+          },
+          {
+            id: parseInt(id) + 2,
+            name: "Casual Cotton T-Shirt",
+            price: 29.99,
+            originalPrice: 29.99,
+            rating: 4.5,
+            reviews: 87,
+            category: "men",
+            image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
+          },
+          {
+            id: parseInt(id) + 3,
+            name: "Lightweight Spring Jacket",
+            price: 89.99,
+            originalPrice: 119.99,
+            rating: 4.7,
+            reviews: 42,
+            category: "men",
+            image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80",
+            sale: true
+          },
+          {
+            id: parseInt(id) + 4,
+            name: "Classic Oxford Shoes",
+            price: 119.99,
+            originalPrice: 119.99,
+            rating: 4.8,
+            reviews: 36,
+            category: "men",
+            image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
+          }
+        ]);
+        setLoadingRecommendations(false);
+      }
+    };
+    
+    fetchRecommendations();
+  }, [product.id, id]);
 
   const handleQuantityChange = (e) => {
     setQuantity(parseInt(e.target.value));
@@ -163,67 +282,28 @@ const ProductPage = () => {
       return;
     }
     
-    // Add product to cart using cart context
-    addToCart(product, quantity, selectedSize, selectedColor);
-    
-    // Update local cart count for immediate feedback
-    const newQuantity = quantityInCart + quantity;
-    
-    // Animation and feedback
-    setButtonClicked(true);
-    setButtonText(`Added! (${newQuantity} in cart)`);
-    
-    setTimeout(() => {
-      setButtonClicked(false);
-      setButtonText(`Add to Cart (${newQuantity} in cart)`);
-    }, 1200);
+    try {
+      // Add product to cart using cart context
+      addToCart(product, quantity, selectedSize, selectedColor);
+      
+      // Update local cart count for immediate feedback
+      const newQuantity = quantityInCart + quantity;
+      
+      // Animation and feedback
+      setButtonClicked(true);
+      setButtonText(`Added! (${newQuantity} in cart)`);
+      
+      setTimeout(() => {
+        setButtonClicked(false);
+        setButtonText(`Add to Cart (${newQuantity} in cart)`);
+      }, 1200);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add item to cart. Please try again.');
+    }
   };
 
-  // Mock related products
-  const relatedProducts = [
-    {
-      id: parseInt(id) + 1,
-      name: "Slim Fit Denim Jeans",
-      price: 59.99,
-      originalPrice: 79.99,
-      rating: 4.3,
-      reviews: 56,
-      category: "men",
-      image: "https://images.unsplash.com/photo-1542272604-787c3835535d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80",
-      sale: true
-    },
-    {
-      id: parseInt(id) + 2,
-      name: "Casual Cotton T-Shirt",
-      price: 29.99,
-      originalPrice: 29.99,
-      rating: 4.5,
-      reviews: 87,
-      category: "men",
-      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      id: parseInt(id) + 3,
-      name: "Lightweight Spring Jacket",
-      price: 89.99,
-      originalPrice: 119.99,
-      rating: 4.7,
-      reviews: 42,
-      category: "men",
-      image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80",
-      sale: true
-    },
-    {
-      id: parseInt(id) + 4,
-      name: "Classic Oxford Shoes",
-      price: 119.99,
-      originalPrice: 119.99,
-      rating: 4.8,
-      reviews: 36,
-      category: "men",
-      image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
-    }
-  ];
+  // Related products are now fetched from the backend via the recommendations API
 
   if (loading) {
     return (
@@ -233,10 +313,20 @@ const ProductPage = () => {
     );
   }
 
-  if (!product) {
+  if (error) {
+    return (
+      <div className="container">
+        <div className="error">{error}</div>
+        <Link to="/" className="back-to-home">Back to Home</Link>
+      </div>
+    );
+  }
+
+  if (!product || !product.id) {
     return (
       <div className="container">
         <div className="error">Product not found</div>
+        <Link to="/" className="back-to-home">Back to Home</Link>
       </div>
     );
   }
@@ -423,7 +513,7 @@ const ProductPage = () => {
             <div className="product-features">
               <h3>Product Features</h3>
               <ul>
-                {product.features.map((feature, index) => (
+                {product.features && product.features.map((feature, index) => (
                   <li key={index}><FontAwesomeIcon icon={faCheck} className="feature-icon" /> {feature}</li>
                 ))}
               </ul>
@@ -454,9 +544,17 @@ const ProductPage = () => {
         <div className="related-products-section">
           <h2>You May Also Like</h2>
           <div className="related-products">
-            {relatedProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+            {loadingRecommendations ? (
+              <div className="loading-recommendations">Loading recommendations...</div>
+            ) : recommendationsError ? (
+              <div className="recommendations-error">{recommendationsError}</div>
+            ) : relatedProducts && relatedProducts.length > 0 ? (
+              relatedProducts.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            ) : (
+              <div className="no-recommendations">No recommendations available</div>
+            )}
           </div>
         </div>
       </div>

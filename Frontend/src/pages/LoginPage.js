@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGoogle, faFacebook } from '@fortawesome/free-brands-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import './AuthPages.css';
 
@@ -13,7 +11,8 @@ const LoginPage = () => {
   });
   
   const [errors, setErrors] = useState({});
-  const { login } = useAuth();
+  const auth = useAuth();
+  const login = auth?.login;
   const navigate = useNavigate();
   
   const handleChange = (e) => {
@@ -56,25 +55,27 @@ const LoginPage = () => {
   
   const [loginError, setLoginError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Clear any previous login errors
     setLoginError('');
     
     if (validateForm()) {
-      // Submit form - would connect to your MongoDB backend
-      console.log('Login form submitted:', formData);
-      
-      // Login using AuthContext
-      const result = login(formData);
-      
-      if (result.success) {
-        // Redirect to account page after successful login
-        navigate('/account');
-      } else {
-        // Display the error message
-        setLoginError(result.message || 'Invalid credentials. Please try again.');
+      try {
+        // Submit form to backend via AuthContext
+        const result = await login(formData);
+        
+        if (result.success) {
+          // Redirect to account page after successful login
+          navigate('/account');
+        } else {
+          // Display the error message
+          setLoginError(result.message || 'Invalid credentials. Please try again.');
+        }
+      } catch (error) {
+        setLoginError('An unexpected error occurred. Please try again.');
+        console.error('Login error:', error);
       }
     }
   };
@@ -85,21 +86,6 @@ const LoginPage = () => {
         <div className="auth-container">
           <div className="auth-form-container">
             <h1 className="auth-title">Log In to Your Account</h1>
-            
-            <div className="social-auth">
-              <button className="social-btn google">
-                <FontAwesomeIcon icon={faGoogle} />
-                <span>Continue with Google</span>
-              </button>
-              <button className="social-btn facebook">
-                <FontAwesomeIcon icon={faFacebook} />
-                <span>Continue with Facebook</span>
-              </button>
-            </div>
-            
-            <div className="divider">
-              <span>OR</span>
-            </div>
             
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="form-group">

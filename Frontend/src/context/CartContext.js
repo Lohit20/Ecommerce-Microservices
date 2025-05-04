@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { cartService } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
@@ -20,23 +22,42 @@ const loadCartFromStorage = () => {
   }
 };
 
+// Safe API call wrapper
+const safeApiCall = async (apiCall) => {
+  try {
+    return await apiCall();
+  } catch (error) {
+    console.error('API call failed:', error);
+    return { data: null };
+  }
+};
+
 // Actions
 const ADD_TO_CART = 'ADD_TO_CART';
 const REMOVE_FROM_CART = 'REMOVE_FROM_CART';
 const UPDATE_QUANTITY = 'UPDATE_QUANTITY';
 const CLEAR_CART = 'CLEAR_CART';
+const SET_CART = 'SET_CART';
 
 // Reducer
 const cartReducer = (state, action) => {
   switch (action.type) {
+    case SET_CART: {
+      return {
+        ...action.payload
+      };
+    }
+    
     case ADD_TO_CART: {
       const { product, quantity = 1, size, color } = action.payload;
-      const productId = product.id;
+      const productId = product.product_id || product.id; // Use product_id from backend or id from frontend
       const itemKey = `${productId}-${size || 'default'}-${color || 'default'}`;
 
       // Check if the item already exists in the cart
       const existingItemIndex = state.items.findIndex(item => 
-        item.id === productId && item.size === size && item.color === color
+        (item.product_id === productId || item.id === productId) && 
+        item.size === size && 
+        item.color === color
       );
 
       let updatedItems;
@@ -56,6 +77,7 @@ const cartReducer = (state, action) => {
       } else {
         // Add new item
         const newItem = {
+          product_id: productId,
           id: productId,
           key: itemKey,
           name: product.name,
@@ -133,11 +155,72 @@ const cartReducer = (state, action) => {
 
 export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState, loadCartFromStorage);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const auth = useAuth();
+  const user = auth?.user;
+  const isAuthenticated = auth?.isAuthenticated;
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(state));
   }, [state]);
+
+  // Fetch user's cart from backend when authenticated
+  useEffect(() => {
+    const fetchUserCart = async () => {
+      if (isAuthenticated && user?.id) {
+        try {
+          setLoading(true);
+          setError(null);
+          const response = await cartService.getUserTransactions(user.id);
+          
+          // If user has active cart/transaction, update local cart
+          if (response.data && response.data.length > 0) {
+            // Find the most recent incomplete transaction (cart)
+            const activeCart = response.data.find(transaction => !transaction.completed);
+            
+            if (activeCart && activeCart.product_cart) {
+              // Transform backend cart format to frontend format
+              const cartItems = activeCart.product_cart.map(item => ({
+                product_id: item.product_id,
+                id: item.product_id,
+                key: `${item.product_id}-${item.size || 'default'}-${item.color || 'default'}`,
+                name: item.name,
+                image: item.image,
+                price: item.price,
+                quantity: item.quantity,
+                totalPrice: item.price * item.quantity,
+                size: item.size,
+                color: item.color
+              }));
+              
+              const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0);
+              const totalPrice = cartItems.reduce((total, item) => total + item.totalPrice, 0);
+              
+              dispatch({
+                type: SET_CART,
+                payload: {
+                  items: cartItems,
+                  totalItems,
+                  totalPrice
+                }
+              });
+            }
+          }
+        } catch (err) {
+          setError('Failed to fetch cart. Please try again.');
+          console.error('Error fetching user cart:', err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchUserCart();
+  }, [isAuthenticated, user, dispatch]);
 
   const addToCart = (product, quantity = 1, size = null, color = null) => {
     dispatch({
@@ -162,16 +245,89 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     dispatch({ type: CLEAR_CART });
+    setOrderPlaced(false);
+    setOrderId(null);
+  };
+  
+  // Process checkout and create order
+  const checkout = async (checkoutData) => {
+    if (!isAuthenticated) {
+      setError('You must be logged in to checkout');
+      return { success: false, message: 'Authentication required' };
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Format cart items for backend
+      const productCart = state.items.map(item => ({
+        product_id: item.product_id || item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        size: item.size || null,
+        color: item.color || null,
+        image: item.image
+      }));
+      
+      // Create order payload according to backend Order model
+      const orderData = {
+        user_id: user.id,
+        product_cart: productCart,
+        total_amount: state.totalPrice,
+        payment_method: checkoutData.paymentMethod,
+        shipping_address: {
+          address: checkoutData.address,
+          city: checkoutData.city,
+          state: checkoutData.state,
+          postal_code: checkoutData.postalCode,
+          country: checkoutData.country
+        },
+        created_at: new Date().toISOString()
+      };
+      
+      // Send order to backend
+      const response = await cartService.insertTransaction(orderData);
+      
+      // Handle successful order
+      if (response.data && response.data.order_id) {
+        setOrderId(response.data.order_id);
+        setOrderPlaced(true);
+        clearCart();
+        return { 
+          success: true, 
+          orderId: response.data.order_id 
+        };
+      } else {
+        throw new Error('Invalid response from server');
+      }
+      
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to process order. Please try again.');
+      console.error('Checkout error:', err);
+      return { 
+        success: false, 
+        message: err.response?.data?.message || 'Failed to process order. Please try again.' 
+      };
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <CartContext.Provider
       value={{
         cart: state,
+        loading,
+        error,
+        orderPlaced,
+        orderId,
         addToCart,
         removeFromCart,
         updateQuantity,
-        clearCart
+        clearCart,
+        checkout
       }}
     >
       {children}
@@ -187,4 +343,4 @@ export const useCart = () => {
   return context;
 };
 
-export default CartContext; 
+export default CartContext;

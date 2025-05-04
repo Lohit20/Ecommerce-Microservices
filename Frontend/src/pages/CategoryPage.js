@@ -27,12 +27,30 @@ const CategoryPage = () => {
   useEffect(() => {
     // Simulate API call
     setTimeout(() => {
+      // Map backend category names to frontend display names
+      const categoryMapping = {
+        "men's clothing": "men",
+        "women's clothing": "women",
+        "boys' clothing": "boys",
+        "girls' clothing": "girls"
+      };
+      
       // Get the appropriate image array for the category
-      const imageArray = unsplashImages[category] || unsplashImages.seasonal;
+      const displayCategory = categoryMapping[category] || category;
+      const imageArray = unsplashImages[displayCategory] || unsplashImages.seasonal;
       
       // Generate product names based on category
       const getProductName = (index, category) => {
-        const categoryPrefix = category.charAt(0).toUpperCase() + category.slice(1);
+        // Map backend category names to frontend display names for product naming
+        const categoryMapping = {
+          "men's clothing": "men",
+          "women's clothing": "women",
+          "boys' clothing": "boys",
+          "girls' clothing": "girls"
+        };
+        
+        const displayCategory = categoryMapping[category] || category;
+        const categoryPrefix = displayCategory.charAt(0).toUpperCase() + displayCategory.slice(1);
         
         // Different clothing items based on category
         const menItems = [
@@ -65,7 +83,10 @@ const CategoryPage = () => {
         
         let itemList;
         
-        switch(category) {
+        // Use the mapped display category for the switch statement
+        const switchCategory = categoryMapping[category] || category;
+        
+        switch(switchCategory) {
           case 'men':
             itemList = menItems;
             break;

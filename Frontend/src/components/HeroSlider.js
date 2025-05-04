@@ -15,6 +15,36 @@ const HeroSlider = () => {
     '/Images/freestocks-_3Q3tsJ01nc-unsplash.jpg'
   ];
   
+  // Error handling for image loading
+  const [imagesLoaded, setImagesLoaded] = useState(true);
+  const [imageErrors, setImageErrors] = useState([]);
+  
+  // Preload images to check if they exist
+  useEffect(() => {
+    const preloadImages = async () => {
+      try {
+        const promises = imagesList.map((src) => {
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = src;
+            img.onload = () => resolve(src);
+            img.onerror = () => reject(src);
+          });
+        });
+        
+        await Promise.all(promises);
+        setImagesLoaded(true);
+      } catch (errorSrc) {
+        console.error(`Failed to load image: ${errorSrc}`);
+        setImageErrors(prev => [...prev, errorSrc]);
+        // Continue showing the slider even if some images fail to load
+        setImagesLoaded(true);
+      }
+    };
+    
+    preloadImages();
+  }, []);
+  
   // Shuffle the images array to display in random order
   const shuffleArray = (array) => {
     const shuffled = [...array];

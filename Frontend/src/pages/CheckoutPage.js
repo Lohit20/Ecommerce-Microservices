@@ -8,7 +8,7 @@ import './CheckoutPage.css';
 import { formatPrice } from '../utils/priceUtils';
 
 const CheckoutPage = () => {
-  const { cart, clearCart } = useCart();
+  const { cart, clearCart, checkout } = useCart();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -164,6 +164,41 @@ const CheckoutPage = () => {
       setTimeout(() => {
         clearCart();
       }, 1000);
+    }
+  };
+  
+  const placeOrder = async () => {
+    // Validate current step
+    if (!validateStep(3)) {
+      return;
+    }
+    
+    // Format checkout data for backend
+    const checkoutData = {
+      ...formData,
+      paymentMethod: 'credit_card', // Or get from form if you have multiple payment methods
+      address: formData.address,
+      city: formData.city,
+      state: formData.country, // Using country as state for now
+      postalCode: formData.postalCode,
+      country: formData.country
+    };
+    
+    try {
+      // Use the checkout method from CartContext to process the order
+      const result = await checkout(checkoutData);
+      
+      if (result.success) {
+        // Order was successfully placed
+        setOrderId(result.orderId);
+        setOrderPlaced(true);
+      } else {
+        // Display error message
+        alert(result.message || 'Failed to place order. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      alert('An unexpected error occurred. Please try again.');
     }
   };
 
@@ -609,4 +644,4 @@ const CheckoutPage = () => {
   );
 };
 
-export default CheckoutPage; 
+export default CheckoutPage;

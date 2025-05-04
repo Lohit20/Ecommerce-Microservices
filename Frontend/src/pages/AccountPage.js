@@ -7,7 +7,9 @@ import './AccountPage.css';
 
 const AccountPage = () => {
   // Get user data and auth functions from context
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
   const navigate = useNavigate();
 
   // Mock order history - in a real app, this would come from an API

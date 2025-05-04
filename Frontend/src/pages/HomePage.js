@@ -127,25 +127,25 @@ const HomePage = () => {
       id: 'men',
       name: 'Men',
       image: unsplashImages.men[0],
-      link: '/category/men'
+      link: '/category/men\'s clothing'
     },
     {
       id: 'women',
       name: 'Women',
       image: unsplashImages.women[0],
-      link: '/category/women'
+      link: '/category/women\'s clothing'
     },
     {
       id: 'girls',
       name: 'Girls',
       image: unsplashImages.girls[0],
-      link: '/category/girls'
+      link: '/category/girls\' clothing'
     },
     {
       id: 'boys',
       name: 'Boys',
       image: unsplashImages.boys[0],
-      link: '/category/boys'
+      link: '/category/boys\' clothing'
     },
     {
       id: 'sale',

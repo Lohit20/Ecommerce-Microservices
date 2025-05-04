@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGoogle, faFacebook } from '@fortawesome/free-brands-svg-icons';
 import './AuthPages.css';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
-    agreeTerms: false,
+    address: '',
+    phone_number: ''
   });
   
   const [errors, setErrors] = useState({});
   const [registrationError, setRegistrationError] = useState('');
-  const { register } = useAuth();
+  const auth = useAuth();
+  const register = auth?.register;
   const navigate = useNavigate();
   
   const handleChange = (e) => {
@@ -44,12 +43,8 @@ const RegisterPage = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.firstName) {
-      newErrors.firstName = 'First name is required';
-    }
-    
-    if (!formData.lastName) {
-      newErrors.lastName = 'Last name is required';
+    if (!formData.username) {
+      newErrors.username = 'Username is required';
     }
     
     if (!formData.email) {
@@ -68,33 +63,39 @@ const RegisterPage = () => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     
-    if (!formData.agreeTerms) {
-      newErrors.agreeTerms = 'You must agree to the terms and conditions';
+    if (!formData.address) {
+      newErrors.address = 'Address is required';
+    }
+    
+    if (!formData.phone_number) {
+      newErrors.phone_number = 'Phone number is required';
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Clear any previous registration errors
     setRegistrationError('');
     
     if (validateForm()) {
-      // Submit form using AuthContext
-      console.log('Registration form submitted:', formData);
-      
-      // Register using AuthContext
-      const result = register(formData);
-      
-      if (result.success) {
-        // Redirect to account page after successful registration
-        navigate('/account');
-      } else {
-        // Display the error message
-        setRegistrationError(result.message || 'Registration failed. Please try again.');
+      try {
+        // Submit form to backend via AuthContext
+        const result = await register(formData);
+        
+        if (result.success) {
+          // Redirect to account page after successful registration
+          navigate('/account');
+        } else {
+          // Display the error message
+          setRegistrationError(result.message || 'Registration failed. Please try again.');
+        }
+      } catch (error) {
+        setRegistrationError('An unexpected error occurred. Please try again.');
+        console.error('Registration error:', error);
       }
     }
   };
@@ -106,48 +107,18 @@ const RegisterPage = () => {
           <div className="auth-form-container">
             <h1 className="auth-title">Create an Account</h1>
             
-            <div className="social-auth">
-              <button className="social-btn google">
-                <FontAwesomeIcon icon={faGoogle} />
-                <span>Continue with Google</span>
-              </button>
-              <button className="social-btn facebook">
-                <FontAwesomeIcon icon={faFacebook} />
-                <span>Continue with Facebook</span>
-              </button>
-            </div>
-            
-            <div className="divider">
-              <span>OR</span>
-            </div>
-            
             <form onSubmit={handleSubmit} className="auth-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="firstName">First Name</label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className={errors.firstName ? 'error' : ''}
-                  />
-                  {errors.firstName && <div className="error-message">{errors.firstName}</div>}
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="lastName">Last Name</label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className={errors.lastName ? 'error' : ''}
-                  />
-                  {errors.lastName && <div className="error-message">{errors.lastName}</div>}
-                </div>
+              <div className="form-group">
+                <label htmlFor="username">Username</label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  className={errors.username ? 'error' : ''}
+                />
+                {errors.username && <div className="error-message">{errors.username}</div>}
               </div>
               
               <div className="form-group">
@@ -189,22 +160,35 @@ const RegisterPage = () => {
                 {errors.confirmPassword && <div className="error-message">{errors.confirmPassword}</div>}
               </div>
               
-              <div className="form-group terms">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="agreeTerms"
-                    name="agreeTerms"
-                    checked={formData.agreeTerms}
-                    onChange={handleChange}
-                    className={errors.agreeTerms ? 'error' : ''}
-                  />
-                  <label htmlFor="agreeTerms">
-                    I agree to the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>
-                  </label>
-                </div>
-                {errors.agreeTerms && <div className="error-message">{errors.agreeTerms}</div>}
+              <div className="form-group">
+                <label htmlFor="address">Address</label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className={errors.address ? 'error' : ''}
+                  placeholder="123 Main St, London"
+                />
+                {errors.address && <div className="error-message">{errors.address}</div>}
               </div>
+              
+              <div className="form-group">
+                <label htmlFor="phone_number">Phone Number</label>
+                <input
+                  type="tel"
+                  id="phone_number"
+                  name="phone_number"
+                  value={formData.phone_number}
+                  onChange={handleChange}
+                  className={errors.phone_number ? 'error' : ''}
+                  placeholder="+44 7911 123456"
+                />
+                {errors.phone_number && <div className="error-message">{errors.phone_number}</div>}
+              </div>
+              
+
               
               {registrationError && (
                 <div className="error-message registration-error">{registrationError}</div>
