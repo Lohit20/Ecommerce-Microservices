@@ -1,0 +1,67 @@
+Frontend Setup Instructions
+=========================
+
+Follow these steps in order to set up the Frontend development environment:
+
+1. INSTALL NODE.JS
+-----------------
+a) Visit: https://nodejs.org/
+b) Download the LTS (Long Term Support) version
+c) Run the installer
+d) Verify installation by opening Command Prompt and typing:
+   node --version
+   npm --version
+   (Both commands should show version numbers)
+
+2. INSTALL PROJECT DEPENDENCIES
+-----------------------------
+a) Open Command Prompt
+b) Navigate to the Frontend folder:
+   cd path\to\Frontend
+c) Install dependencies by running:
+   npm install
+d) Wait until installation completes
+
+3. SETUP ENVIRONMENT VARIABLES
+----------------------------
+a) Create a new file named '.env' in the Frontend folder
+b) Add these configurations to the file:
+
+REACT_APP_API_URL=http://localhost:8000
+REACT_APP_BASE_URL=http://localhost:3000
+NODE_ENV=development
+
+4. START THE APPLICATION
+----------------------
+a) In Command Prompt, make sure you're in the Frontend folder
+b) Run the development server:
+   npm start
+c) Wait for the browser to open automatically
+d) The application should run at: http://localhost:3000
+
+TROUBLESHOOTING
+--------------
+If npm install fails:
+1. Run: npm cache clean --force
+2. Delete the node_modules folder (if it exists)
+3. Try npm install again
+
+If "port in use" error appears:
+1. Either close other applications using port 3000
+2. Or change the port in .env file to:
+   PORT=3001
+
+For any other issues:
+1. Make sure you have stable internet
+2. Check if Node.js is properly installed
+3. Try deleting node_modules and running npm install again
+
+COMMANDS QUICK REFERENCE
+----------------------
+npm install  : Install dependencies
+npm start    : Start development server
+npm run build: Create production build
+npm test     : Run tests
+Ctrl + C     : Stop the development server
+
+Note: Keep Command Prompt open while running the development server.

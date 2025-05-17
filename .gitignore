@@ -22,3 +22,55 @@ build/
 
 # Logs
 *.log
+
+# Dependencies
+/Frontend/node_modules
+/Frontend/.pnp
+/Frontend/.pnp.js
+
+# Testing
+/Frontend/coverage
+
+# Production
+/Frontend/build
+/Frontend/dist
+
+# Environment files
+/Frontend/.env
+/Frontend/.env.local
+/Frontend/.env.development.local
+/Frontend/.env.test.local
+/Frontend/.env.production.local
+
+# Logs
+/Frontend/npm-debug.log*
+/Frontend/yarn-debug.log*
+/Frontend/yarn-error.log*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Cache
+/Frontend/.cache
+/Frontend/.next
+/Frontend/.nuxt
+/Frontend/.gatsby
+
+# Optional
+/Frontend/package-lock.json
+/Frontend/yarn.lock
