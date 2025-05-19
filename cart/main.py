@@ -48,6 +48,16 @@ async def add_to_cart(user_id: int, items: List[CartItem] = Body(...)):
                 quantity=item.quantity,
                 price=product_data["discount_price"]
             ))
+            
+            ## updating stock
+            stock_response = await client.patch(
+                f"http://products_service:8000/update_stock/{item.product_id}",
+                json={"quantity": -item.quantity}
+            )
+            if stock_response.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"Failed to update stock for product {item.product_id}")
+
+
 
     existing_cart = await cart_collection.find_one({"user_id": user_id})
     new_items = jsonable_encoder(validated_items)
@@ -81,20 +91,32 @@ async def remove_from_cart(user_id: int, product_id: int):
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
 
+    item_to_restore = next((item for item in cart["items"] if item["product_id"] == product_id), None)
+    if not item_to_restore:
+        raise HTTPException(status_code=404, detail="Product not found in cart")
+
     updated_items = [item for item in cart["items"] if item["product_id"] != product_id]
 
-    # Update the cart
     await cart_collection.update_one(
         {"user_id": user_id},
         {"$set": {"items": updated_items, "updated_at": datetime.utcnow()}}
     )
 
-    # Check if cart is now empty and delete if so
+    # Restore stock using unified endpoint
+    async with httpx.AsyncClient() as client:
+        restore_response = await client.patch(
+            f"http://products_service:8000/update_stock/{product_id}",
+            json={"quantity": item_to_restore["quantity"]}
+        )
+        if restore_response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to restore stock in product service")
+
     if not updated_items:
         await cart_collection.delete_one({"user_id": user_id})
-        return {"message": "Product removed and cart deleted (now empty)"}
+        return {"message": "Product removed, stock restored, and cart deleted (now empty)"}
 
-    return {"message": "Product removed from cart"}
+    return {"message": "Product removed from cart and stock restored"}
+
 
 
 
@@ -121,9 +143,6 @@ async def checkout_cart(user_id: int, payment_method: PaymentMethod = Body(...))
                 raise HTTPException(status_code=404, detail=f"Product {item['product_id']} not found")
 
             product_data = response.json()
-            if item["quantity"] > product_data["stock"]:
-                raise HTTPException(status_code=400, detail=f"Not enough stock for product {item['product_id']}")
-
             validated_items.append(ProductCartItem(
                 product_id=item["product_id"],
                 quantity=item["quantity"],
