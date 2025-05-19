@@ -1,0 +1,51 @@
+[
+  {
+    "user_id": 104,
+    "items": [
+      {
+        "product_id": 97137289,
+        "quantity": 2,
+        "price": 759
+      }
+    ],
+    "updated_at": "2025-05-18T13:00:00"
+  },
+  {
+    "user_id": 105,
+    "items": [
+      {
+        "product_id": 62583807,
+        "quantity": 1,
+        "price": 279
+      },
+      {
+        "product_id": 22771776,
+        "quantity": 1,
+        "price": 359
+      }
+    ],
+    "updated_at": "2025-05-18T14:00:00"
+  },
+  {
+    "user_id": 107,
+    "items": [
+      {
+        "product_id": 22771776,
+        "quantity": 3,
+        "price": 359
+      }
+    ],
+    "updated_at": "2025-05-18T16:00:00"
+  },
+  {
+    "user_id": 108,
+    "items": [
+      {
+        "product_id": 83919804,
+        "quantity": 8,
+        "price": 759
+      }
+    ],
+    "updated_at": "2025-05-18T17:00:00"
+  }
+]
