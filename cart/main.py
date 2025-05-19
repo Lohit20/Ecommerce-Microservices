@@ -35,7 +35,7 @@ async def add_to_cart(user_id: int, items: List[CartItem] = Body(...)):
     async with httpx.AsyncClient() as client:
         validated_items = []
         for item in items:
-            response = await client.get(f"http://localhost:8081/get_product/{item.product_id}")
+            response = await client.get(f"http://products_service:8000/get_product/{item.product_id}")
             if response.status_code != 200:
                 raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
 
@@ -116,7 +116,7 @@ async def checkout_cart(user_id: int, payment_method: PaymentMethod = Body(...))
 
     async with httpx.AsyncClient() as client:
         for item in cart["items"]:
-            response = await client.get(f"http://localhost:8081/get_product/{item['product_id']}")
+            response = await client.get(f"http://products_service:8000/get_product/{item['product_id']}")
             if response.status_code != 200:
                 raise HTTPException(status_code=404, detail=f"Product {item['product_id']} not found")
 
