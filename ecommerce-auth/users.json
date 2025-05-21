@@ -1,0 +1,142 @@
+[
+  {
+    "username": "johndoe",
+    "email": "john.doe@example.com",
+    "password": "$2b$12$abc123hashedpassword",
+    "address": "123 Elm Street, London",
+    "phone_number": "+447911123456"
+  },
+  {
+    "username": "janedoe",
+    "email": "jane.doe@example.com",
+    "password": "$2b$12$xyz456hashedpassword",
+    "address": "456 Oak Avenue, Manchester",
+    "phone_number": "+447911234567"
+  },
+  {
+    "username": "amitverma",
+    "email": "amit.verma@example.in",
+    "password": "$2b$12$pwamitverma123",
+    "address": "MG Road, Delhi",
+    "phone_number": "+919810000111"
+  },
+  {
+    "username": "liamw",
+    "email": "liam.white@example.com",
+    "password": "$2b$12$hashedpassliam",
+    "address": "98 Riverbank, Bristol",
+    "phone_number": "+447911789012"
+  },
+  {
+    "username": "sophieb",
+    "email": "sophie.brown@example.com",
+    "password": "$2b$12$passsophiehashed",
+    "address": "22 Queen Street, Glasgow",
+    "phone_number": "+447911890123"
+  },
+  {
+    "username": "mikeo",
+    "email": "mike.o@example.net",
+    "password": "$2b$12$mikeopasshash",
+    "address": "14 Castle Road, Leeds",
+    "phone_number": "+447911456789"
+  },
+  {
+    "username": "chrisp",
+    "email": "chris.p@example.org",
+    "password": "$2b$12$hashchrispass",
+    "address": "12 Baker Lane, Birmingham",
+    "phone_number": "+447911098765"
+  },
+  {
+    "username": "anushka",
+    "email": "anushka.k@example.in",
+    "password": "$2b$12$hashanushka123",
+    "address": "Dadar East, Mumbai",
+    "phone_number": "+919820112233"
+  },
+  {
+    "username": "tomlee",
+    "email": "tom.lee@example.com",
+    "password": "$2b$12$leehashedpass",
+    "address": "21 Station Rd, Cardiff",
+    "phone_number": "+447911654321"
+  },
+  {
+    "username": "emilyr",
+    "email": "emily.r@example.com",
+    "password": "$2b$12$pass4emilyr",
+    "address": "Brighton Pier, Brighton",
+    "phone_number": "+447911667788"
+  },
+  {
+    "username": "danishah",
+    "email": "danish.ahmad@example.in",
+    "password": "$2b$12$danishpass",
+    "address": "Charbagh, Lucknow",
+    "phone_number": "+919800112211"
+  },
+  {
+    "username": "oliverh",
+    "email": "oliver.h@example.co.uk",
+    "password": "$2b$12$oliversecurepass",
+    "address": "Hilltop Lane, Sheffield",
+    "phone_number": "+447911000999"
+  },
+  {
+    "username": "zoyak",
+    "email": "zoya.k@example.in",
+    "password": "$2b$12$zoya1234hashed",
+    "address": "New Alipore, Kolkata",
+    "phone_number": "+919831112233"
+  },
+  {
+    "username": "jacobm",
+    "email": "jacob.m@example.com",
+    "password": "$2b$12$jacobmypass",
+    "address": "Market Street, Nottingham",
+    "phone_number": "+447911222333"
+  },
+  {
+    "username": "natalieb",
+    "email": "natalie.b@example.com",
+    "password": "$2b$12$nataliepw",
+    "address": "St. John Road, Southampton",
+    "phone_number": "+447911334455"
+  },
+  {
+    "username": "arjuns",
+    "email": "arjun.s@example.in",
+    "password": "$2b$12$arjunhashedpw",
+    "address": "Anna Nagar, Chennai",
+    "phone_number": "+919900112244"
+  },
+  {
+    "username": "gracew",
+    "email": "grace.w@example.com",
+    "password": "$2b$12$gracepw123",
+    "address": "South Parade, Leeds",
+    "phone_number": "+447911556677"
+  },
+  {
+    "username": "ethanb",
+    "email": "ethan.b@example.com",
+    "password": "$2b$12$ethanhash321",
+    "address": "Park View, Aberdeen",
+    "phone_number": "+447911778899"
+  },
+  {
+    "username": "priyak",
+    "email": "priya.k@example.in",
+    "password": "$2b$12$priya12345",
+    "address": "Banjara Hills, Hyderabad",
+    "phone_number": "+919920112211"
+  },
+  {
+    "username": "ryanq",
+    "email": "ryan.q@example.com",
+    "password": "$2b$12$ryansecurepw",
+    "address": "King Street, Edinburgh",
+    "phone_number": "+447911909090"
+  }
+]
