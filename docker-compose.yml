@@ -1,0 +1,67 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  products_service:
+    image: products_service
+    build:
+      context: ./products
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce_db
+    depends_on:
+      - mongodb
+    volumes:
+      - ./products:/app
+
+  cart_service:
+    image: cart_service
+    build:
+      context: ./cart
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce_db
+    depends_on:
+      - mongodb
+    volumes:
+      - ./cart:/app
+
+  recommendation_service:
+    image: recommendation_service
+    build:
+      context: ./recommendation_and_search_system
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce_db
+    depends_on:
+      - mongodb
+    volumes:
+      - ./recommendation_and_search_system:/app
+
+  ecommerce_auth_service:
+    image: ecommerce_auth_service
+    build:
+      context: ./ecommerce-auth
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/ecommerce_db
+    depends_on:
+      - mongodb
+    volumes:
+      - ./ecommerce-auth:/app
+
+volumes:
+  mongo_data:
