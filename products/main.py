@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional
 from models import Product
@@ -37,6 +37,34 @@ async def get_product(product_id: int):
         del product["_id"]
         return product
     raise HTTPException(status_code=404, detail="Product not found")
+
+
+
+@app.patch("/update_stock/{product_id}")
+async def update_stock(product_id: int, payload: dict = Body(...)):
+    quantity_change = payload.get("quantity")
+
+    if quantity_change is None or not isinstance(quantity_change, int):
+        raise HTTPException(status_code=400, detail="Field 'quantity' must be an integer")
+
+    product = await collection.find_one({"product_id": product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    new_stock = product["stock"] + quantity_change
+    if new_stock < 0:
+        raise HTTPException(status_code=400, detail="Insufficient stock")
+
+    await collection.update_one(
+        {"product_id": product_id},
+        {"$inc": {"stock": quantity_change}}
+    )
+
+    return {
+        "message": "Stock updated",
+        "product_id": product_id,
+        "new_stock": new_stock
+    }
 
 
 @app.put("/update_product/{product_id}")

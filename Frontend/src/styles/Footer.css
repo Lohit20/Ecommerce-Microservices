@@ -1,0 +1,45 @@
+/* Global Footer Styles */
+.site-footer {
+  margin-top: auto;
+  position: relative;
+  z-index: 10;
+}
+
+/* Footer transition effect when scrolling to bottom */
+.footer-scroll-in {
+  animation: fadeInUpFooter 0.6s ease forwards;
+}
+
+@keyframes fadeInUpFooter {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sticky footer for shorter pages */
+@media screen and (min-height: 1000px) {
+  .site-footer {
+    position: sticky;
+    bottom: 0;
+  }
+}
+
+/* Footer visibility transitions */
+.footer-visible {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.footer-hidden {
+  opacity: 0.7;
+  transition: opacity 0.4s ease;
+}
+
+.footer-visible:hover {
+  opacity: 1;
+} 

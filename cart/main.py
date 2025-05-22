@@ -1,65 +1,188 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from motor.motor_asyncio import AsyncIOMotorClient
-from typing import Optional
-from models import Order
-import requests
+from fastapi.encoders import jsonable_encoder
 from datetime import datetime
+from typing import List
+import httpx
 import os
+from uuid import uuid4
+
+from models import CartItem, ProductCartItem, Cart, Order, PaymentMethod
 
 app = FastAPI()
 
-# MongoDB Connection
-# MONGO_URI = "mongodb://localhost:27017"
+# MongoDB setup
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-DB_NAME = "ecommerce_db"
-Collection = "cart"
-
 client = AsyncIOMotorClient(MONGO_URI)
-db = client[DB_NAME]
-collection = db[Collection]
+db = client["ecommerce_db"]
+cart_collection = db["carts"]
+transaction_collection = db["transactions"]
+
+# ---------------------- CART SERVICE ----------------------
+
+@app.get("/cart/{user_id}")
+async def get_cart(user_id: int):
+    cart = await cart_collection.find_one({"user_id": user_id})
+    if not cart:
+        return {"user_id": user_id, "items": []}
+    cart["id"] = str(cart["_id"])
+    del cart["_id"]
+    return cart
 
 
-@app.get("/get_all_transactions/")
-async def list_all_transactions():
-    transactions = []
-    async for cart in collection.find():
-        cart["id"] = str(cart["_id"])
-        del cart["_id"]
-        transactions.append(cart)
-    return transactions
+@app.post("/cart/{user_id}/add")
+async def add_to_cart(user_id: int, items: List[CartItem] = Body(...)):
+    async with httpx.AsyncClient() as client:
+        validated_items = []
+        for item in items:
+            response = await client.get(f"http://products_service:8000/get_product/{item.product_id}")
+            if response.status_code != 200:
+                raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
 
-@app.get("/get_user_transactions/{user_id}")
-async def get_user_transactions(user_id: int):
-    transactions = await collection.find({"user_id": user_id}).to_list(None)
-    
-    if transactions:
-        for transaction in transactions:
-            transaction["id"] = str(transaction["_id"])
-            del transaction["_id"]
-        return transactions
-    
-    raise HTTPException(status_code=404, detail="No transactions found for this user")
+            product_data = response.json()
+            if item.quantity > product_data["stock"]:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for product {item.product_id}")
 
-@app.post("/insert_user_transactions/{user_id}/{product_id}/{quantity}")
-async def create_post(user_id: int, product_id: int, quantity: int):
-    product_response = requests.get(f"http://products_service:8000/get_product/{product_id}")
-    if product_response.status_code != 200:
-        raise HTTPException(status_code=404, detail="Product not found")
+            validated_items.append(ProductCartItem(
+                product_id=item.product_id,
+                quantity=item.quantity,
+                price=product_data["discount_price"]
+            ))
+            
+            ## updating stock
+            stock_response = await client.patch(
+                f"http://products_service:8000/update_stock/{item.product_id}",
+                json={"quantity": -item.quantity}
+            )
+            if stock_response.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"Failed to update stock for product {item.product_id}")
 
-    product_data = product_response.json()
-    if quantity > product_data["stock"]:
-        raise HTTPException(status_code=400, detail="Not enough stock available")
-    
-    order = Order(
-        order_id=106,  # We have to generate dynamically
-        user_id=user_id,
-        product_cart=[{"product_id": product_id, "quantity": quantity, "price": product_data["discount_price"]}],
-        total_amount=product_data["discount_price"] * quantity,
-        payment_method="Credit Card",
-        created_at=datetime.utcnow(),
+
+
+    existing_cart = await cart_collection.find_one({"user_id": user_id})
+    new_items = jsonable_encoder(validated_items)
+
+    if existing_cart:
+        existing_items = existing_cart.get("items", [])
+        for new_item in new_items:
+            matched = next((i for i in existing_items if i["product_id"] == new_item["product_id"]), None)
+            if matched:
+                matched["quantity"] += new_item["quantity"]
+            else:
+                existing_items.append(new_item)
+
+        await cart_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"items": existing_items, "updated_at": datetime.utcnow()}}
+        )
+    else:
+        await cart_collection.insert_one({
+            "user_id": user_id,
+            "items": new_items,
+            "updated_at": datetime.utcnow()
+        })
+
+    return {"message": "Items added to cart"}
+
+
+@app.post("/cart/{user_id}/remove/{product_id}")
+async def remove_from_cart(user_id: int, product_id: int):
+    cart = await cart_collection.find_one({"user_id": user_id})
+    if not cart:
+        raise HTTPException(status_code=404, detail="Cart not found")
+
+    item_to_restore = next((item for item in cart["items"] if item["product_id"] == product_id), None)
+    if not item_to_restore:
+        raise HTTPException(status_code=404, detail="Product not found in cart")
+
+    updated_items = [item for item in cart["items"] if item["product_id"] != product_id]
+
+    await cart_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"items": updated_items, "updated_at": datetime.utcnow()}}
     )
 
-    order_data = order.dict()
-    result = await collection.insert_one(order_data)
+    # Restore stock using unified endpoint
+    async with httpx.AsyncClient() as client:
+        restore_response = await client.patch(
+            f"http://products_service:8000/update_stock/{product_id}",
+            json={"quantity": item_to_restore["quantity"]}
+        )
+        if restore_response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to restore stock in product service")
 
-    return {"id": str(result.inserted_id)}
+    if not updated_items:
+        await cart_collection.delete_one({"user_id": user_id})
+        return {"message": "Product removed, stock restored, and cart deleted (now empty)"}
+
+    return {"message": "Product removed from cart and stock restored"}
+
+
+
+
+@app.post("/cart/{user_id}/clear")
+async def clear_cart(user_id: int):
+    await cart_collection.delete_one({"user_id": user_id})
+    return {"message": "Cart cleared"}
+
+# ---------------------- TRANSACTION (CHECKOUT) ----------------------
+
+@app.post("/checkout/{user_id}")
+async def checkout_cart(user_id: int, payment_method: PaymentMethod = Body(...)):
+    cart = await cart_collection.find_one({"user_id": user_id})
+    if not cart or not cart.get("items"):
+        raise HTTPException(status_code=404, detail="Cart is empty or not found")
+
+    validated_items = []
+    total_amount = 0.0
+
+    async with httpx.AsyncClient() as client:
+        for item in cart["items"]:
+            response = await client.get(f"http://products_service:8000/get_product/{item['product_id']}")
+            if response.status_code != 200:
+                raise HTTPException(status_code=404, detail=f"Product {item['product_id']} not found")
+
+            product_data = response.json()
+            validated_items.append(ProductCartItem(
+                product_id=item["product_id"],
+                quantity=item["quantity"],
+                price=product_data["discount_price"]
+            ))
+
+            total_amount += item["quantity"] * product_data["discount_price"]
+
+    order = Order(
+        order_id=int(uuid4().int % 1e12),
+        user_id=user_id,
+        product_cart=validated_items,
+        total_amount=total_amount,
+        payment_method=payment_method,
+        created_at=datetime.utcnow()
+    )
+
+    result = await transaction_collection.insert_one(jsonable_encoder(order))
+    await cart_collection.delete_one({"user_id": user_id})
+
+    return {
+        "message": "Transaction completed",
+        "order_id": order.order_id,
+        "transaction_id": str(result.inserted_id)
+    }
+
+@app.get("/transactions/{user_id}")
+async def get_user_transactions(
+    user_id: int,
+    skip: int = 0,
+    limit: int = 20
+):
+    cursor = transaction_collection.find({"user_id": user_id}).skip(skip).limit(limit)
+    transactions = await cursor.to_list(length=limit)
+    
+    if not transactions:
+        raise HTTPException(status_code=404, detail="No transactions found")
+
+    for txn in transactions:
+        txn["id"] = str(txn["_id"])
+        del txn["_id"]
+
+    return transactions
