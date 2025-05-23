@@ -22,7 +22,7 @@ class CartItem(BaseModel):
 
 
 class Cart(BaseModel):
-    user_id: int
+    user_id: str
     items: List[ProductCartItem]
     updated_at: datetime
 

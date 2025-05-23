@@ -5,26 +5,59 @@ import { faTrash, faPlus, faMinus } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
 import './CartPage.css';
 import { formatPrice } from '../utils/priceUtils';
+import { cartService } from '../services/api';
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
 
-  const handleRemoveItem = (itemKey) => {
-    removeFromCart(itemKey);
-  };
-
-  const handleUpdateQuantity = (itemKey, currentQuantity, change) => {
-    const newQuantity = currentQuantity + change;
-    if (newQuantity <= 0) {
-      removeFromCart(itemKey);
-    } else {
-      updateQuantity(itemKey, newQuantity);
+  const handleRemoveItem = async (itemKey) => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (user) {
+        const userId = user.id;
+        await cartService.removeFromCart(userId, itemKey); // adjust method name if needed
+        removeFromCart(itemKey);
+      } else {
+        // If user not logged in, just remove locally
+        removeFromCart(itemKey);
+      }
+    } catch (error) {
+      console.error('Failed to remove item from cart:', error);
+      alert('Failed to remove item. Please try again.');
     }
   };
 
-  const handleClearCart = () => {
+  const handleUpdateQuantity = async (itemKey, currentQuantity, change) => {
+    const newQuantity = currentQuantity + change;
+    try {
+      if (newQuantity <= 0) {
+        await handleRemoveItem(itemKey);
+      } else {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user) {
+          const userId = user.id;
+          await cartService.updateCartQuantity(userId, itemKey, newQuantity);
+        }
+        updateQuantity(itemKey, newQuantity);
+      }
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      alert('Failed to update quantity. Please try again.');
+    }
+  };
+
+  const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your cart?')) {
-      clearCart();
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user) {
+          await cartService.clearCart(user.id);
+        }
+        await clearCart();
+      } catch (error) {
+        console.error('Failed to clear cart:', error);
+        alert('Failed to clear cart. Please try again.');
+      }
     }
   };
 
@@ -32,8 +65,8 @@ const CartPage = () => {
     <div className="cart-page">
       <div className="container">
         <h1 className="page-title">Your Shopping Cart</h1>
-        
-        {cart.items.length === 0 ? (
+
+        {!cart.items || cart.items.length === 0 ? (
           <div className="empty-cart">
             <p>Your cart is empty.</p>
             <Link to="/" className="shop-now-button">Shop Now</Link>
@@ -48,7 +81,7 @@ const CartPage = () => {
                 <div className="cart-item-total">Total</div>
                 <div className="cart-item-actions">Actions</div>
               </div>
-              
+
               {cart.items.map(item => (
                 <div className="cart-item" key={item.key}>
                   <div className="cart-item-product">
@@ -61,19 +94,19 @@ const CartPage = () => {
                       {item.color && <p className="cart-item-color">Color: {item.color}</p>}
                     </div>
                   </div>
-                  
+
                   <div className="cart-item-price">{formatPrice(item.price)}</div>
-                  
+
                   <div className="cart-item-quantity">
                     <div className="quantity-control">
-                      <button 
+                      <button
                         className="quantity-btn"
                         onClick={() => handleUpdateQuantity(item.key, item.quantity, -1)}
                       >
                         <FontAwesomeIcon icon={faMinus} />
                       </button>
                       <div className="quantity-display">{item.quantity}</div>
-                      <button 
+                      <button
                         className="quantity-btn"
                         onClick={() => handleUpdateQuantity(item.key, item.quantity, 1)}
                       >
@@ -81,13 +114,13 @@ const CartPage = () => {
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="cart-item-total">
                     {formatPrice(item.price * item.quantity)}
                   </div>
-                  
+
                   <div className="cart-item-actions">
-                    <button 
+                    <button
                       className="remove-item-btn"
                       onClick={() => handleRemoveItem(item.key)}
                     >
@@ -97,29 +130,29 @@ const CartPage = () => {
                 </div>
               ))}
             </div>
-            
+
             <div className="cart-summary">
               <h2 className="summary-title">Order Summary</h2>
-              
+
               <div className="summary-row">
                 <span>Subtotal</span>
                 <span>{formatPrice(cart.totalPrice)}</span>
               </div>
-              
+
               <div className="summary-row">
                 <span>Shipping</span>
                 <span>Free</span>
               </div>
-              
+
               <div className="summary-row total">
                 <span>Total</span>
                 <span>{formatPrice(cart.totalPrice)}</span>
               </div>
-              
+
               <Link to="/checkout" className="checkout-button">
                 Proceed to Checkout
               </Link>
-              
+
               <div className="cart-actions">
                 <button className="clear-cart-button" onClick={handleClearCart}>
                   Clear Cart

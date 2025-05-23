@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faShoppingBag, faCreditCard, faHeart, faSignOutAlt, faEdit } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import './AccountPage.css';
+import { cartService } from '../services/api';
+import axios from 'axios';
 
 const AccountPage = () => {
   // Get user data and auth functions from context
@@ -13,37 +15,7 @@ const AccountPage = () => {
   const navigate = useNavigate();
 
   // Mock order history - in a real app, this would come from an API
-  const [orders] = useState([
-    {
-      id: 'ORD-12345',
-      date: 'June 15, 2023',
-      total: 129.99,
-      status: 'Delivered',
-      items: [
-        { id: 1, name: 'Classic White T-Shirt', price: 29.99, quantity: 2 },
-        { id: 2, name: 'Slim Fit Jeans', price: 69.99, quantity: 1 }
-      ]
-    },
-    {
-      id: 'ORD-12346',
-      date: 'May 22, 2023',
-      total: 89.99,
-      status: 'Delivered',
-      items: [
-        { id: 3, name: 'Summer Dress', price: 59.99, quantity: 1 },
-        { id: 4, name: 'Canvas Shoes', price: 29.99, quantity: 1 }
-      ]
-    },
-    {
-      id: 'ORD-12347',
-      date: 'April 10, 2023',
-      total: 159.99,
-      status: 'Delivered',
-      items: [
-        { id: 5, name: 'Winter Jacket', price: 159.99, quantity: 1 }
-      ]
-    }
-  ]);
+  const [orders, setOrders] = useState([]);
 
   // State to track which order is expanded
   const [expandedOrder, setExpandedOrder] = useState(null);
@@ -56,21 +28,40 @@ const AccountPage = () => {
     }
   };
 
+  const fetchOrder = async () => {
+    if (localStorage.getItem('auth_token') !== "") {
+      const user = JSON.parse(localStorage.getItem('user'))
+      const userId = user['id']
+      const response = await cartService.getUserTransactions(userId)
+      if (response.data.success) {
+        setOrders(response.data.transaction)
+      }
+      else {
+        new Error(response.data.message)
+      }
+      console.log(response)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrder()
+  }, [])
+
   return (
     <div className="account-page">
       <div className="container">
         <h1 className="page-title">My Account</h1>
-        
+
         <div className="account-content">
           <div className="account-sidebar">
             <div className="user-info">
               <div className="user-avatar">
-                <span>{user.firstName.charAt(0)}{user.lastName.charAt(0)}</span>
+                <span>{"JC"}</span>
               </div>
-              <h3>{user.firstName} {user.lastName}</h3>
+              <h3>{user.username}</h3>
               <p>{user.email}</p>
             </div>
-            
+
             <ul className="account-nav">
               <li className="active">
                 <FontAwesomeIcon icon={faUser} />
@@ -97,7 +88,7 @@ const AccountPage = () => {
               </li>
             </ul>
           </div>
-          
+
           <div className="account-main">
             <div className="account-section">
               <div className="section-header">
@@ -107,7 +98,7 @@ const AccountPage = () => {
                   Edit
                 </button>
               </div>
-              
+
               <div className="profile-details">
                 <div className="profile-row">
                   <div className="profile-field">
@@ -119,7 +110,7 @@ const AccountPage = () => {
                     <p>{user.lastName}</p>
                   </div>
                 </div>
-                
+
                 <div className="profile-row">
                   <div className="profile-field">
                     <label>Email</label>
@@ -132,7 +123,7 @@ const AccountPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="account-section">
               <div className="section-header">
                 <h2>Address</h2>
@@ -141,19 +132,19 @@ const AccountPage = () => {
                   Edit
                 </button>
               </div>
-              
+
               <div className="address-details">
                 <p>{user.address}</p>
                 <p>{user.city}, {user.state} {user.zipCode}</p>
                 <p>{user.country}</p>
               </div>
             </div>
-            
+
             <div className="account-section">
               <div className="section-header">
                 <h2>Order History</h2>
               </div>
-              
+
               {orders.length > 0 ? (
                 <div className="order-history">
                   {orders.map(order => (
@@ -178,7 +169,7 @@ const AccountPage = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       {expandedOrder === order.id && (
                         <div className="order-details">
                           <h4>Items</h4>

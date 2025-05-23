@@ -58,12 +58,12 @@ const CheckoutPage = () => {
         newErrors.firstName = 'First name is required';
         isValid = false;
       }
-      
+
       if (!formData.lastName.trim()) {
         newErrors.lastName = 'Last name is required';
         isValid = false;
       }
-      
+
       if (!formData.email.trim()) {
         newErrors.email = 'Email is required';
         isValid = false;
@@ -71,43 +71,43 @@ const CheckoutPage = () => {
         newErrors.email = 'Email is invalid';
         isValid = false;
       }
-      
+
       if (!formData.phone.trim()) {
         newErrors.phone = 'Phone is required';
         isValid = false;
       }
     }
-    
+
     if (step === 2) {
       // Validate shipping information
       if (!formData.address.trim()) {
         newErrors.address = 'Address is required';
         isValid = false;
       }
-      
+
       if (!formData.city.trim()) {
         newErrors.city = 'City is required';
         isValid = false;
       }
-      
+
       if (!formData.postalCode.trim()) {
         newErrors.postalCode = 'Postal code is required';
         isValid = false;
       }
-      
+
       if (!formData.country.trim()) {
         newErrors.country = 'Country is required';
         isValid = false;
       }
     }
-    
+
     if (step === 3) {
       // Validate payment information
       if (!formData.cardName.trim()) {
         newErrors.cardName = 'Cardholder name is required';
         isValid = false;
       }
-      
+
       if (!formData.cardNumber.trim()) {
         newErrors.cardNumber = 'Card number is required';
         isValid = false;
@@ -115,7 +115,7 @@ const CheckoutPage = () => {
         newErrors.cardNumber = 'Card number must be 16 digits';
         isValid = false;
       }
-      
+
       if (!formData.expiryDate.trim()) {
         newErrors.expiryDate = 'Expiry date is required';
         isValid = false;
@@ -123,7 +123,7 @@ const CheckoutPage = () => {
         newErrors.expiryDate = 'Expiry date must be in MM/YY format';
         isValid = false;
       }
-      
+
       if (!formData.cvv.trim()) {
         newErrors.cvv = 'CVV is required';
         isValid = false;
@@ -151,28 +151,28 @@ const CheckoutPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (validateStep(currentStep)) {
       // Generate order ID (in real app, this would come from the backend)
       const orderNumber = Math.floor(100000000 + Math.random() * 900000000);
       setOrderId(`ORD-${orderNumber}`);
-      
+
       // Simulate order processing
       setOrderPlaced(true);
-      
+
       // Clear cart
       setTimeout(() => {
         clearCart();
       }, 1000);
     }
   };
-  
+
   const placeOrder = async () => {
     // Validate current step
     if (!validateStep(3)) {
       return;
     }
-    
+
     // Format checkout data for backend
     const checkoutData = {
       ...formData,
@@ -183,11 +183,11 @@ const CheckoutPage = () => {
       postalCode: formData.postalCode,
       country: formData.country
     };
-    
+
     try {
       // Use the checkout method from CartContext to process the order
       const result = await checkout(checkoutData);
-      
+      console.log(result)
       if (result.success) {
         // Order was successfully placed
         setOrderId(result.orderId);
@@ -203,6 +203,7 @@ const CheckoutPage = () => {
   };
 
   const handleBackToHome = () => {
+    console.log('handleBackTOHome')
     navigate('/');
   };
 
@@ -233,7 +234,7 @@ const CheckoutPage = () => {
             <h2>Thank You For Your Order!</h2>
             <p className="order-id">Order #{orderId}</p>
             <p>Your order has been placed and is being processed. You will receive an email confirmation shortly.</p>
-            
+
             <div className="order-details">
               <h3>Order Summary</h3>
               <div className="order-items">
@@ -256,7 +257,7 @@ const CheckoutPage = () => {
                   </div>
                 ))}
               </div>
-              
+
               <div className="order-total">
                 <div className="total-row">
                   <span>Subtotal</span>
@@ -272,7 +273,7 @@ const CheckoutPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="shipping-address">
               <h3>Shipping Details</h3>
               <p>
@@ -282,7 +283,7 @@ const CheckoutPage = () => {
                 {formData.country}
               </p>
             </div>
-            
+
             <button className="continue-shopping-btn" onClick={handleBackToHome}>
               Continue Shopping
             </button>
@@ -301,29 +302,29 @@ const CheckoutPage = () => {
             <FontAwesomeIcon icon={faChevronLeft} /> Back to Cart
           </Link>
         </div>
-        
+
         <div className="checkout-content">
           <div className="checkout-steps">
             <div className={`step ${currentStep === 1 ? 'active' : currentStep > 1 ? 'completed' : ''}`}>
               <div className="step-number">{currentStep > 1 ? <FontAwesomeIcon icon={faCheckCircle} /> : 1}</div>
               <div className="step-label">Contact</div>
             </div>
-            
+
             <div className="step-line"></div>
-            
+
             <div className={`step ${currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : ''}`}>
               <div className="step-number">{currentStep > 2 ? <FontAwesomeIcon icon={faCheckCircle} /> : 2}</div>
               <div className="step-label">Shipping</div>
             </div>
-            
+
             <div className="step-line"></div>
-            
+
             <div className={`step ${currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : ''}`}>
               <div className="step-number">3</div>
               <div className="step-label">Payment</div>
             </div>
           </div>
-          
+
           <div className="checkout-form-container">
             <form className="checkout-form" onSubmit={handleSubmit}>
               {/* Step 1: Contact Information */}
@@ -332,7 +333,7 @@ const CheckoutPage = () => {
                   <h2 className="step-title">
                     <FontAwesomeIcon icon={faUser} /> Contact Information
                   </h2>
-                  
+
                   <div className="form-row">
                     <div className="form-group">
                       <label htmlFor="firstName">First Name</label>
@@ -346,7 +347,7 @@ const CheckoutPage = () => {
                       />
                       {errors.firstName && <div className="error-message">{errors.firstName}</div>}
                     </div>
-                    
+
                     <div className="form-group">
                       <label htmlFor="lastName">Last Name</label>
                       <input
@@ -360,7 +361,7 @@ const CheckoutPage = () => {
                       {errors.lastName && <div className="error-message">{errors.lastName}</div>}
                     </div>
                   </div>
-                  
+
                   <div className="form-group">
                     <label htmlFor="email">Email Address</label>
                     <input
@@ -373,7 +374,7 @@ const CheckoutPage = () => {
                     />
                     {errors.email && <div className="error-message">{errors.email}</div>}
                   </div>
-                  
+
                   <div className="form-group">
                     <label htmlFor="phone">Phone Number</label>
                     <input
@@ -386,7 +387,7 @@ const CheckoutPage = () => {
                     />
                     {errors.phone && <div className="error-message">{errors.phone}</div>}
                   </div>
-                  
+
                   <div className="form-actions">
                     <button type="button" className="next-btn" onClick={handleNext}>
                       Continue to Shipping
@@ -394,14 +395,14 @@ const CheckoutPage = () => {
                   </div>
                 </div>
               )}
-              
+
               {/* Step 2: Shipping Information */}
               {currentStep === 2 && (
                 <div className="checkout-step">
                   <h2 className="step-title">
                     <FontAwesomeIcon icon={faMapMarkerAlt} /> Shipping Address
                   </h2>
-                  
+
                   <div className="form-group">
                     <label htmlFor="address">Address</label>
                     <input
@@ -414,7 +415,7 @@ const CheckoutPage = () => {
                     />
                     {errors.address && <div className="error-message">{errors.address}</div>}
                   </div>
-                  
+
                   <div className="form-row">
                     <div className="form-group">
                       <label htmlFor="city">City</label>
@@ -428,7 +429,7 @@ const CheckoutPage = () => {
                       />
                       {errors.city && <div className="error-message">{errors.city}</div>}
                     </div>
-                    
+
                     <div className="form-group">
                       <label htmlFor="postalCode">Postal Code</label>
                       <input
@@ -442,7 +443,7 @@ const CheckoutPage = () => {
                       {errors.postalCode && <div className="error-message">{errors.postalCode}</div>}
                     </div>
                   </div>
-                  
+
                   <div className="form-group">
                     <label htmlFor="country">Country</label>
                     <select
@@ -461,7 +462,7 @@ const CheckoutPage = () => {
                     </select>
                     {errors.country && <div className="error-message">{errors.country}</div>}
                   </div>
-                  
+
                   <div className="shipping-options">
                     <h3>Shipping Method</h3>
                     <div className="shipping-option">
@@ -474,7 +475,7 @@ const CheckoutPage = () => {
                         <div className="shipping-description">Delivery within 3-5 business days</div>
                       </label>
                     </div>
-                    
+
                     <div className="shipping-option">
                       <input type="radio" id="express" name="shipping" value="express" />
                       <label htmlFor="express">
@@ -486,7 +487,7 @@ const CheckoutPage = () => {
                       </label>
                     </div>
                   </div>
-                  
+
                   <div className="form-actions">
                     <button type="button" className="back-btn" onClick={handlePrevious}>
                       Back
@@ -497,14 +498,14 @@ const CheckoutPage = () => {
                   </div>
                 </div>
               )}
-              
+
               {/* Step 3: Payment Information */}
               {currentStep === 3 && (
                 <div className="checkout-step">
                   <h2 className="step-title">
                     <FontAwesomeIcon icon={faCreditCard} /> Payment Method
                   </h2>
-                  
+
                   <div className="payment-cards-info">
                     <div className="accepted-cards">
                       <FontAwesomeIcon icon={faCcVisa} size="2x" />
@@ -513,7 +514,7 @@ const CheckoutPage = () => {
                       <FontAwesomeIcon icon={faApplePay} size="2x" />
                     </div>
                   </div>
-                  
+
                   <div className="form-group">
                     <label htmlFor="cardName">Cardholder Name</label>
                     <input
@@ -527,7 +528,7 @@ const CheckoutPage = () => {
                     />
                     {errors.cardName && <div className="error-message">{errors.cardName}</div>}
                   </div>
-                  
+
                   <div className="form-group">
                     <label htmlFor="cardNumber">Card Number</label>
                     <input
@@ -542,7 +543,7 @@ const CheckoutPage = () => {
                     />
                     {errors.cardNumber && <div className="error-message">{errors.cardNumber}</div>}
                   </div>
-                  
+
                   <div className="form-row">
                     <div className="form-group">
                       <label htmlFor="expiryDate">Expiry Date</label>
@@ -558,7 +559,7 @@ const CheckoutPage = () => {
                       />
                       {errors.expiryDate && <div className="error-message">{errors.expiryDate}</div>}
                     </div>
-                    
+
                     <div className="form-group">
                       <label htmlFor="cvv">CVV</label>
                       <input
@@ -574,7 +575,7 @@ const CheckoutPage = () => {
                       {errors.cvv && <div className="error-message">{errors.cvv}</div>}
                     </div>
                   </div>
-                  
+
                   <div className="save-info">
                     <input
                       type="checkbox"
@@ -585,7 +586,7 @@ const CheckoutPage = () => {
                     />
                     <label htmlFor="saveInfo">Save payment information for future purchases</label>
                   </div>
-                  
+
                   <div className="form-actions">
                     <button type="button" className="back-btn" onClick={handlePrevious}>
                       Back
@@ -597,10 +598,10 @@ const CheckoutPage = () => {
                 </div>
               )}
             </form>
-            
+
             <div className="order-summary">
               <h2 className="summary-title">Order Summary</h2>
-              
+
               <div className="summary-items">
                 {cart.items.map(item => (
                   <div className="summary-item" key={item.key}>
@@ -619,18 +620,18 @@ const CheckoutPage = () => {
                   </div>
                 ))}
               </div>
-              
+
               <div className="totals">
                 <div className="total-row">
                   <span>Subtotal</span>
                   <span>{formatPrice(cart.totalPrice)}</span>
                 </div>
-                
+
                 <div className="total-row">
                   <span>Shipping</span>
                   <span>Free</span>
                 </div>
-                
+
                 <div className="total-row final">
                   <span>Total</span>
                   <span>{formatPrice(cart.totalPrice)}</span>

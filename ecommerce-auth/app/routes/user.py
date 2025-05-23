@@ -25,10 +25,10 @@ def register(user: UserRegister):
     #Insert into MongoDB
     result = user_collection.insert_one(user_dict)
 
-
     return {
         "message": "User registered successfully",
-        "user_id": str(result.inserted_id)
+        "user_id": str(result.inserted_id),
+        "user":user
     }
 
 
@@ -37,6 +37,7 @@ def register(user: UserRegister):
 def login(user: UserLogin):
     #Find user by email
     db_user = user_collection.find_one({"email": user.email})
+    print(db_user)
 
 
     #If not found or password incorrect
@@ -46,5 +47,8 @@ def login(user: UserLogin):
 
     #Generate JWT
     access_token = create_access_token(data={"sub": db_user["email"]})
+    # print( )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    user={"id":str(db_user["_id"]),"username":db_user["username"],"email":db_user["email"],"address":db_user["address"],"phone_number":db_user["phone_number"]}
+
+    return {"token": access_token, "token_type": "bearer","user":user}

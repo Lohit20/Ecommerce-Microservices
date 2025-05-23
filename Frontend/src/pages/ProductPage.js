@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faStar, 
-  faStarHalfAlt, 
-  faMinus, 
-  faPlus, 
-  faCheck, 
-  faTruck, 
-  faShieldAlt, 
+import {
+  faStar,
+  faStarHalfAlt,
+  faMinus,
+  faPlus,
+  faCheck,
+  faTruck,
+  faShieldAlt,
   faUndo
 } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
@@ -32,7 +32,7 @@ const ProductPage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const productPageRef = useRef(null);
   const imageRef = useRef(null);
-  
+
   // Get cart functions from context
   const { addToCart, cart } = useCart();
 
@@ -56,11 +56,11 @@ const ProductPage = () => {
   // Calculate quantity in cart for this product
   const getProductQuantityInCart = useCallback(() => {
     if (!cart || !cart.items || !product.id) return 0;
-    
+
     return cart.items
-      .filter(item => 
-        item.id === product.id && 
-        (selectedSize ? item.size === selectedSize : true) && 
+      .filter(item =>
+        item.id === product.id &&
+        (selectedSize ? item.size === selectedSize : true) &&
         (selectedColor ? item.color === selectedColor : true)
       )
       .reduce((total, item) => total + item.quantity, 0);
@@ -69,10 +69,10 @@ const ProductPage = () => {
   // Update quantity in cart and button text when cart changes
   useEffect(() => {
     if (loading) return;
-    
+
     const qty = getProductQuantityInCart();
     setQuantityInCart(qty);
-    
+
     if (qty > 0) {
       setButtonText(`Add to Cart (${qty} in cart)`);
     } else {
@@ -92,11 +92,11 @@ const ProductPage = () => {
         // Import ProductService dynamically to avoid circular dependencies
         const ProductService = (await import('../services/ProductService')).default;
         const productData = await ProductService.getProduct(id);
-        
+        console.log(productData)
         if (!productData) {
           throw new Error('Product not found');
         }
-        
+
         // Transform backend product model to match frontend expectations
         const transformedProduct = {
           id: productData.product_id || productData.id,
@@ -107,14 +107,14 @@ const ProductPage = () => {
           reviews: productData.review_count || productData.reviews || 0,
           sizes: productData.sizes || ['S', 'M', 'L', 'XL'],
           colors: productData.colors || ['Black', 'White', 'Blue', 'Red'],
-          images: productData.images && productData.images.length > 0 
-            ? productData.images 
+          images: productData.images && productData.images.length > 0
+            ? productData.images
             : [
-                'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1516257984-b1b4d707412e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
-              ],
+              'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1516257984-b1b4d707412e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+              'https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+            ],
           category: productData.category,
           stock: productData.stock || 10,
           brand: productData.brand || 'Fashion Brand',
@@ -127,7 +127,7 @@ const ProductPage = () => {
           ],
           inStock: productData.stock > 0 || true
         };
-        
+
         setProduct(transformedProduct);
         setSelectedSize(transformedProduct.sizes[0]);
         setSelectedColor(transformedProduct.colors[0]);
@@ -138,31 +138,31 @@ const ProductPage = () => {
         setLoading(false);
       }
     };
-    
+
     fetchProduct();
   }, [id]);
-  
+
   // Fetch product recommendations
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [recommendationsError, setRecommendationsError] = useState(null);
-  
+
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!product.id) return;
-      
+
       setLoadingRecommendations(true);
       setRecommendationsError(null);
-      
+
       try {
         // Import ProductService dynamically to avoid circular dependencies
         const ProductService = (await import('../services/ProductService')).default;
         const recommendedProductsData = await ProductService.getRecommendations(product.id);
-        
+
         if (!recommendedProductsData || !Array.isArray(recommendedProductsData) || recommendedProductsData.length === 0) {
           throw new Error('No recommendations available');
         }
-        
+
         // Transform recommended products to match frontend expectations
         const transformedRecommendations = recommendedProductsData.map(item => ({
           id: item.product_id || item.id,
@@ -172,17 +172,17 @@ const ProductPage = () => {
           rating: item.ratings || item.rating || 4.5,
           reviews: item.review_count || item.reviews || Math.floor(Math.random() * 100) + 20,
           category: item.category,
-          image: item.images && item.images.length > 0 ? item.images[0] : 
-                 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+          image: item.images && item.images.length > 0 ? item.images[0] :
+            'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
           sale: item.discount > 0 || (item.original_price && item.price < item.original_price)
         }));
-        
+
         setRelatedProducts(transformedRecommendations);
         setLoadingRecommendations(false);
       } catch (error) {
         console.error('Error fetching recommendations:', error);
         setRecommendationsError(error.message || 'Failed to load recommendations');
-        
+
         // Fallback to default related products if API fails
         setRelatedProducts([
           {
@@ -231,7 +231,7 @@ const ProductPage = () => {
         setLoadingRecommendations(false);
       }
     };
-    
+
     fetchRecommendations();
   }, [product.id, id]);
 
@@ -255,11 +255,11 @@ const ProductPage = () => {
 
   const handleImageMouseMove = (e) => {
     if (!imageRef.current) return;
-    
+
     const { left, top, width, height } = imageRef.current.getBoundingClientRect();
     const x = ((e.clientX - left) / width) * 100;
     const y = ((e.clientY - top) / height) * 100;
-    
+
     setZoomPosition({ x, y });
   };
 
@@ -271,28 +271,28 @@ const ProductPage = () => {
     setIsZoomed(false);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedSize) {
       alert('Please select a size');
       return;
     }
-    
+
     if (!selectedColor) {
       alert('Please select a color');
       return;
     }
-    
+
     try {
       // Add product to cart using cart context
-      addToCart(product, quantity, selectedSize, selectedColor);
-      
+      await addToCart(product, quantity, selectedSize, selectedColor, product);
+
       // Update local cart count for immediate feedback
       const newQuantity = quantityInCart + quantity;
-      
+
       // Animation and feedback
       setButtonClicked(true);
       setButtonText(`Added! (${newQuantity} in cart)`);
-      
+
       setTimeout(() => {
         setButtonClicked(false);
         setButtonText(`Add to Cart (${newQuantity} in cart)`);
@@ -337,23 +337,23 @@ const ProductPage = () => {
         <div className="product-breadcrumb">
           <Link to="/">Home</Link> / <Link to="/category/clothing">Clothing</Link> / <span>{product.name}</span>
         </div>
-        
+
         <div className="product-details">
           <div className="product-gallery">
-            <div 
+            <div
               className={`main-image-container ${isZoomed ? 'zoomed' : ''}`}
               onMouseMove={handleImageMouseMove}
               onMouseEnter={handleImageMouseEnter}
               onMouseLeave={handleImageMouseLeave}
             >
               <div className="main-image" ref={imageRef}>
-                <img 
-                  src={product.images[selectedImage]} 
-                  alt={product.name} 
+                <img
+                  src={product.images[selectedImage]}
+                  alt={product.name}
                 />
               </div>
               {isZoomed && (
-                <div 
+                <div
                   className="zoom-image"
                   style={{
                     backgroundImage: `url(${product.images[selectedImage]})`,
@@ -364,17 +364,17 @@ const ProductPage = () => {
               <div className="zoom-instruction">
                 <span>Hover to zoom</span>
               </div>
-              
+
               {quantityInCart > 0 && (
                 <div className="cart-quantity-badge product-page-badge">
                   {quantityInCart} in cart
                 </div>
               )}
             </div>
-            
+
             <div className="thumbnail-images">
               {product.images.map((image, index) => (
-                <div 
+                <div
                   key={`thumbnail-${index}`}
                   className={`thumbnail ${selectedImage === index ? 'active' : ''}`}
                   onClick={() => handleThumbnailClick(index)}
@@ -384,21 +384,21 @@ const ProductPage = () => {
               ))}
             </div>
           </div>
-          
+
           <div className="product-info">
             <h1 className="product-name">{product.name}</h1>
-            
+
             <div className="product-rating">
               <div className="stars">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <FontAwesomeIcon 
-                    key={star} 
+                  <FontAwesomeIcon
+                    key={star}
                     icon={
                       product.rating >= star
                         ? faStar
                         : product.rating + 0.5 >= star
-                        ? faStarHalfAlt
-                        : ['far', 'star']
+                          ? faStarHalfAlt
+                          : ['far', 'star']
                     }
                     className={product.rating >= star ? '' : 'empty'}
                   />
@@ -406,9 +406,9 @@ const ProductPage = () => {
               </div>
               <span className="review-count">{product.reviews} reviews</span>
             </div>
-            
+
             <div className="product-price">{formatPrice(product.price)}</div>
-            
+
             <p className="product-description">{product.description}</p>
 
             <div className="product-benefits">
@@ -429,7 +429,7 @@ const ProductPage = () => {
                 <span>30-day returns</span>
               </div>
             </div>
-            
+
             <div className="product-options">
               <div className="size-selection">
                 <div className="option-header">
@@ -448,7 +448,7 @@ const ProductPage = () => {
                   ))}
                 </div>
               </div>
-              
+
               <div className="color-selection">
                 <h3>Select Color</h3>
                 <div className="color-options">
@@ -468,26 +468,26 @@ const ProductPage = () => {
                   {selectedColor}
                 </div>
               </div>
-              
+
               <div className="quantity-selection">
                 <h3>Quantity</h3>
                 <div className="quantity-selector">
-                  <button 
+                  <button
                     className="quantity-btn"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label="Decrease quantity"
                   >
                     <FontAwesomeIcon icon={faMinus} />
                   </button>
-                  <input 
-                    type="number" 
-                    min="1" 
+                  <input
+                    type="number"
+                    min="1"
                     max="99"
                     className="quantity-input"
                     value={quantity}
                     onChange={handleQuantityChange}
                   />
-                  <button 
+                  <button
                     className="quantity-btn"
                     onClick={() => setQuantity(quantity + 1)}
                     aria-label="Increase quantity"
@@ -497,7 +497,7 @@ const ProductPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <button
               className={`add-to-cart-btn ${buttonClicked ? 'clicked' : ''}`}
               onClick={handleAddToCart}
@@ -507,7 +507,7 @@ const ProductPage = () => {
             </button>
           </div>
         </div>
-        
+
         <div className="product-details-tabs">
           <div className="tab-content">
             <div className="product-features">
@@ -521,9 +521,9 @@ const ProductPage = () => {
           </div>
         </div>
 
-        <div className="sticky-add-to-cart" style={{ 
+        <div className="sticky-add-to-cart" style={{
           transform: isScrolled ? 'translateY(0)' : 'translateY(100%)',
-          zIndex: 999 
+          zIndex: 999
         }}>
           <div className="sticky-product-info">
             <img src={product.images[0]} alt={product.name} />
@@ -540,7 +540,7 @@ const ProductPage = () => {
             <span className="button-text">{product.inStock ? 'Add to Cart' : 'Out of Stock'}</span>
           </button>
         </div>
-        
+
         <div className="related-products-section">
           <h2>You May Also Like</h2>
           <div className="related-products">

@@ -17,6 +17,7 @@ import './styles/ProductStyles.css';
 import './styles/Footer.css';
 import './App.css';
 import ScrollButton from './components/ScrollToTop';
+import { SearchProvider } from './context/SearchContext';
 // Import debug utilities with safe fallbacks
 let logComponentMount, logError, logNavigation;
 try {
@@ -35,7 +36,7 @@ try {
 // ScrollToTopOnNav component to ensure page scrolls to top on route change
 const ScrollToTopOnNav = () => {
   const { pathname } = useLocation();
-  
+
   useEffect(() => {
     // Log navigation for debugging
     try {
@@ -46,19 +47,19 @@ const ScrollToTopOnNav = () => {
     }
     window.scrollTo(0, 0);
   }, [pathname]);
-  
+
   return null;
 };
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
   const auth = useAuth();
-  
+
   if (!auth || !auth.isAuthenticated) {
     // Redirect to login if not authenticated
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 
@@ -71,7 +72,7 @@ function App() {
     } catch (e) {
       console.log('App component mounted - checking for rendering issues');
     }
-    
+
     // Log any unhandled errors
     const handleGlobalError = (event) => {
       event.preventDefault();
@@ -92,41 +93,44 @@ function App() {
         });
       }
     };
-    
+
     window.addEventListener('error', handleGlobalError);
-    
+
     return () => {
       window.removeEventListener('error', handleGlobalError);
     };
   }, []);
-  
+
   return (
     <CartProvider>
       <AuthProvider>
-        <Router>
-          <div className="app">
-            <ScrollToTopOnNav />
-            <Header />
-            <main className="main-content">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/product/:id" element={<ProductPage />} />
-                <Route path="/category/:category" element={<CategoryPage />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/account" element={
-                  <ProtectedRoute>
-                    <AccountPage />
-                  </ProtectedRoute>
-                } />
-              </Routes>
-            </main>
-            <Footer />
-            <ScrollButton />
-          </div>
-        </Router>
+        <SearchProvider>
+
+          <Router>
+            <div className="app">
+              <ScrollToTopOnNav />
+              <Header />
+              <main className="main-content">
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/product/:id" element={<ProductPage />} />
+                  <Route path="/category/:category" element={<CategoryPage />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/account" element={
+                    <ProtectedRoute>
+                      <AccountPage />
+                    </ProtectedRoute>
+                  } />
+                </Routes>
+              </main>
+              <Footer />
+              <ScrollButton />
+            </div>
+          </Router>
+        </SearchProvider>
       </AuthProvider>
     </CartProvider>
   );
