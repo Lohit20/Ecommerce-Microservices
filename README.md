@@ -4,7 +4,7 @@ A scalable, modular, and secure e-commerce platform built using **FastAPI**, **M
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 
@@ -22,7 +22,7 @@ ecommerce-microservices/
 
 ---
 
-## 🚀 Features
+## Features
 
 - **User Authentication:** JWT-based login, password hashing with bcrypt, and role-based access control.
 - **Product Management:** Full CRUD operations, category/subcategory classification, real-time stock handling.
@@ -33,7 +33,7 @@ ecommerce-microservices/
 
 ---
 
-## 🧰 Technologies Used
+## Technologies Used
 
 - **Backend:** FastAPI, Python 3.11, MongoDB, Motor (async Mongo driver), HTTPX  
 - **NLP & ML:** Hugging Face Transformers (`sentence-transformers/all-MiniLM-L6-v2`)  
@@ -44,7 +44,7 @@ ecommerce-microservices/
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 Each microservice is independently containerized and communicates over REST or shared MongoDB. Services include:
 
@@ -57,15 +57,15 @@ Each microservice is independently containerized and communicates over REST or s
 
 ---
 
-## 🖥️ Setup & Deployment
+## Setup & Deployment
 
-### 🔧 Prerequisites
+### Prerequisites
 
 - Docker & Docker Compose
 - Node.js & npm (for frontend)
 - MongoDB (optional if already running externally)
 
-### 🔨 Build and Run
+### Build and Run
 
 ```bash
 # Clone the repo
@@ -87,7 +87,7 @@ docker-compose up --build
 
 ---
 
-## 🧪 Testing
+## Testing
 
 * **Unit Testing:** Use `pytest` in each service directory.
 * **Integration Testing:** Postman collections to simulate full user flow.
@@ -96,7 +96,7 @@ docker-compose up --build
 
 ---
 
-## 🔒 Security Highlights
+## Security Highlights
 
 * JWT token-based authentication with expiry & refresh logic
 * Role-based access control (Admin/User)
@@ -106,7 +106,7 @@ docker-compose up --build
 
 ---
 
-## 🎯 Future Enhancements
+## Future Enhancements
 
 * Integrate third-party payment gateways (e.g., Stripe)
 * Admin dashboard, product filters, pagination
@@ -116,7 +116,7 @@ docker-compose up --build
 ---
 
 
-## 📚 References
+## References
 
 * [FastAPI Docs](https://fastapi.tiangolo.com/)
 * [MongoDB Manual](https://www.mongodb.com/docs/manual/)
