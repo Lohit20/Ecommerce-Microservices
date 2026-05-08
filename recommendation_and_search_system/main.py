@@ -24,7 +24,8 @@ app.add_middleware(
 )
 
 # MongoDB Connection
-MONGO_URI = "mongodb://localhost:27017"
+import os
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = "ecommerce_db"
 Collection = "products"
 

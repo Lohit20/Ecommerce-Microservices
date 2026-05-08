@@ -14,6 +14,7 @@ app = FastAPI()
 
 # MongoDB setup
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+PRODUCTS_SERVICE_URL = os.getenv("PRODUCTS_SERVICE_URL", "http://localhost:8001")
 client = AsyncIOMotorClient(MONGO_URI)
 db = client["ecommerce_db"]
 cart_collection = db["carts"]
@@ -50,7 +51,7 @@ async def add_to_cart(user_id: str, items: List[CartItem] = Body(...)):
     async with httpx.AsyncClient() as client:
         validated_items = []
         for item in items:
-            response = await client.get(f"http://localhost:8001/get_product/{item.product_id}")
+            response = await client.get(f"{PRODUCTS_SERVICE_URL}/get_product/{item.product_id}")
             if response.status_code != 200:
                 raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
             product_data = response.json()
@@ -74,7 +75,7 @@ async def add_to_cart(user_id: str, items: List[CartItem] = Body(...)):
 
 
             stock_response = await client.patch(
-                f"http://localhost:8001/update_stock/{item.product_id}",
+                f"{PRODUCTS_SERVICE_URL}/update_stock/{item.product_id}",
                 json={"quantity": -item.quantity}
             )
             if stock_response.status_code != 200:
@@ -127,7 +128,7 @@ async def remove_from_cart(user_id: str, product_id: int):
 
     async with httpx.AsyncClient() as client:
         restore_response = await client.patch(
-            f"http://localhost:8001/update_stock/{product_id}",
+            f"{PRODUCTS_SERVICE_URL}/update_stock/{product_id}",
             json={"quantity": item_to_restore["quantity"]}
         )
         if restore_response.status_code != 200:
@@ -160,7 +161,7 @@ async def checkout_cart(user_id: str, payment_method: PaymentMethod = Body(...))
 
     async with httpx.AsyncClient() as client:
         for item in cart["items"]:
-            response = await client.get(f"http://localhost:8001/get_product/{item['product_id']}")
+            response = await client.get(f"{PRODUCTS_SERVICE_URL}/get_product/{item['product_id']}")
             if response.status_code != 200:
                 raise HTTPException(status_code=404, detail=f"Product {item['product_id']} not found")
 
