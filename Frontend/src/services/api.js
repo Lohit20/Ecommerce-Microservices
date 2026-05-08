@@ -1,28 +1,21 @@
 import axios from 'axios';
 
-// Utility to create an API client with optional auth interceptors
 const createApiClient = (baseURL, withAuth = false) => {
   const client = axios.create({
     baseURL,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
   });
 
   if (withAuth) {
-    // Attach token to request headers
     client.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('authToken');
-        if (token) {
-          config.headers['Authorization'] = `Bearer ${token}`;
-        }
+        if (token) config.headers['Authorization'] = `Bearer ${token}`;
         return config;
       },
       (error) => Promise.reject(error)
     );
 
-    // Handle 401 Unauthorized globally
     client.interceptors.response.use(
       (response) => response,
       (error) => {
@@ -39,47 +32,31 @@ const createApiClient = (baseURL, withAuth = false) => {
   return client;
 };
 
-// Create API clients
 const authApi = createApiClient('http://localhost:8004/api');
-const productApi = createApiClient('http://localhost:8001/', true);
+const productApi = createApiClient('http://localhost:8001/');
 const cartApi = createApiClient('http://localhost:8002/', true);
-const RSApi = createApiClient('http://localhost:8003/', true);
+const RSApi = createApiClient('http://localhost:8003/');
 
-// Auth Service API calls
 export const authService = {
   register: (userData) => authApi.post('/auth/register', userData),
   login: (credentials) => authApi.post('/auth/login', credentials),
 };
 
-// Products Service API calls
 export const productsService = {
-  getAllProducts: () => productApi.get('/products'),
-  getProduct: (productId) => productApi.get(`/products/${productId}`),
-  searchProducts: (query) => productApi.get(`/products/search?q=${query}`),
+  getAllProducts: () => productApi.get('/get_all_products/'),
+  getProduct: (productId) => productApi.get(`/get_product/${productId}`),
 };
 
-// Cart Service API calls
 export const cartService = {
+  getCart: (userId) => cartApi.get(`/cart/${userId}`),
+  addToCart: (userId, items) => cartApi.post(`/cart/${userId}/add`, items),
+  removeFromCart: (userId, productId) => cartApi.post(`/cart/${userId}/remove/${productId}`),
+  clearCart: (userId) => cartApi.post(`/cart/${userId}/clear`),
+  checkoutCart: (userId, paymentMethod) => cartApi.post(`/checkout/${userId}`, paymentMethod),
   getUserTransactions: (userId) => cartApi.get(`/transactions/${userId}`),
-  insertTransaction: (orderData) => cartApi.post('/cart/', orderData), getCart: (userId) => cartApi.get(`/cart/${userId}`),
-
-  addToCart: (userId, items) =>
-    // items is an array of { product_id, quantity }
-    cartApi.post(`/cart/${userId}/add`, items),
-
-  removeFromCart: (userId, productId) =>
-    cartApi.post(`/cart/${userId}/remove/${productId}`),
-
-  clearCart: (userId) =>
-    cartApi.post(`/cart/${userId}/clear`),
-
-  // Checkout endpoint expects payment_method in the body
-  checkoutCart: (userId, paymentMethod) =>
-    cartApi.post(`/checkout/${userId}`, paymentMethod),
 };
 
-// Recommendation Service API calls
 export const recommendationService = {
-  getProductRecommendations: (productId) => RSApi.get(`/recommendations/${productId}`),
-  searchSemanticProducts: (query) => RSApi.get(`/product_semantic_search?q=${query}`),
+  getRecommendations: () => RSApi.get('/recommendations'),
+  searchProducts: (query) => RSApi.get(`/product_semantic_search?query=${encodeURIComponent(query)}`),
 };

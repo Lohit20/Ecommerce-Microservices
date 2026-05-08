@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CategoryPage from './pages/CategoryPage';
 import AccountPage from './pages/AccountPage';
+import AllProductsPage from './pages/AllProductsPage';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './styles/Typography.css';
@@ -102,8 +103,8 @@ function App() {
   }, []);
 
   return (
-    <CartProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <CartProvider>
         <SearchProvider>
 
           <Router>
@@ -114,6 +115,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/product/:id" element={<ProductPage />} />
+                  <Route path="/shop" element={<AllProductsPage />} />
                   <Route path="/category/:category" element={<CategoryPage />} />
                   <Route path="/cart" element={<CartPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
@@ -131,8 +133,8 @@ function App() {
             </div>
           </Router>
         </SearchProvider>
-      </AuthProvider>
-    </CartProvider>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 

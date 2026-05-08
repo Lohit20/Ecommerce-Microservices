@@ -36,7 +36,7 @@ app.add_middleware(
 )
 
 @app.get("/cart/{user_id}")
-async def get_cart(user_id: int):
+async def get_cart(user_id: str):
     cart = await cart_collection.find_one({"user_id": user_id})
     if not cart:
         return {"user_id": user_id, "items": []}
@@ -46,13 +46,12 @@ async def get_cart(user_id: int):
 
 
 @app.post("/cart/{user_id}/add")
-async def add_to_cart(user_id: int, items: List[CartItem] = Body(...)):
+async def add_to_cart(user_id: str, items: List[CartItem] = Body(...)):
     async with httpx.AsyncClient() as client:
         validated_items = []
         for item in items:
-            response = await client.get(f"http:///localhost:8004/get_product/{item.product_id}")
+            response = await client.get(f"http://localhost:8001/get_product/{item.product_id}")
             if response.status_code != 200:
-
                 raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
             product_data = response.json()
             if item.quantity > product_data["stock"]:
@@ -63,10 +62,9 @@ async def add_to_cart(user_id: int, items: List[CartItem] = Body(...)):
                 quantity=item.quantity,
                 price=product_data["discount_price"]
             ))
-            
-            ## updating stock
+
             stock_response = await client.patch(
-                f"http://products_service:8000/update_stock/{item.product_id}",
+                f"http://localhost:8001/update_stock/{item.product_id}",
                 json={"quantity": -item.quantity}
             )
             if stock_response.status_code != 200:
@@ -101,7 +99,7 @@ async def add_to_cart(user_id: int, items: List[CartItem] = Body(...)):
 
 
 @app.post("/cart/{user_id}/remove/{product_id}")
-async def remove_from_cart(user_id: int, product_id: int):
+async def remove_from_cart(user_id: str, product_id: int):
     cart = await cart_collection.find_one({"user_id": user_id})
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
@@ -117,10 +115,9 @@ async def remove_from_cart(user_id: int, product_id: int):
         {"$set": {"items": updated_items, "updated_at": datetime.utcnow()}}
     )
 
-    # Restore stock using unified endpoint
     async with httpx.AsyncClient() as client:
         restore_response = await client.patch(
-            f"http://localhost:8004/update_stock/{product_id}",
+            f"http://localhost:8001/update_stock/{product_id}",
             json={"quantity": item_to_restore["quantity"]}
         )
         if restore_response.status_code != 200:
@@ -136,14 +133,14 @@ async def remove_from_cart(user_id: int, product_id: int):
 
 
 @app.post("/cart/{user_id}/clear")
-async def clear_cart(user_id: int):
+async def clear_cart(user_id: str):
     await cart_collection.delete_one({"user_id": user_id})
     return {"message": "Cart cleared"}
 
 # ---------------------- TRANSACTION (CHECKOUT) ----------------------
 
 @app.post("/checkout/{user_id}")
-async def checkout_cart(user_id: int, payment_method: PaymentMethod = Body(...)):
+async def checkout_cart(user_id: str, payment_method: PaymentMethod = Body(...)):
     cart = await cart_collection.find_one({"user_id": user_id})
     if not cart or not cart.get("items"):
         raise HTTPException(status_code=404, detail="Cart is empty or not found")
@@ -153,7 +150,7 @@ async def checkout_cart(user_id: int, payment_method: PaymentMethod = Body(...))
 
     async with httpx.AsyncClient() as client:
         for item in cart["items"]:
-            response = await client.get(f"http://localhost:8004/get_product/{item['product_id']}")
+            response = await client.get(f"http://localhost:8001/get_product/{item['product_id']}")
             if response.status_code != 200:
                 raise HTTPException(status_code=404, detail=f"Product {item['product_id']} not found")
 

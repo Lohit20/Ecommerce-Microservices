@@ -8,7 +8,7 @@ class Product(BaseModel):
     name: str
     main_category: str
     sub_category: str
-    image_url: str
+    image: str
     ratings: float
     no_of_ratings: int
     actual_price: float

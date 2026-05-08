@@ -1,51 +1,51 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faShoppingBag, faCreditCard, faHeart, faSignOutAlt, faEdit } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faShoppingBag, faSignOutAlt, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
-import './AccountPage.css';
 import { cartService } from '../services/api';
-import axios from 'axios';
+import './AccountPage.css';
 
 const AccountPage = () => {
-  // Get user data and auth functions from context
-  const auth = useAuth();
-  const user = auth?.user;
-  const logout = auth?.logout;
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Mock order history - in a real app, this would come from an API
   const [orders, setOrders] = useState([]);
-
-  // State to track which order is expanded
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState(null);
 
-  const toggleOrderDetails = (orderId) => {
-    if (expandedOrder === orderId) {
-      setExpandedOrder(null);
-    } else {
-      setExpandedOrder(orderId);
-    }
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const savedUser = localStorage.getItem('user');
+        if (!savedUser) return;
+        const u = JSON.parse(savedUser);
+        const response = await cartService.getUserTransactions(u.id);
+        if (Array.isArray(response.data)) {
+          setOrders(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch orders:', err);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
-  const fetchOrder = async () => {
-    if (localStorage.getItem('auth_token') !== "") {
-      const user = JSON.parse(localStorage.getItem('user'))
-      const userId = user['id']
-      const response = await cartService.getUserTransactions(userId)
-      if (response.data.success) {
-        setOrders(response.data.transaction)
-      }
-      else {
-        new Error(response.data.message)
-      }
-      console.log(response)
-    }
-  }
+  const toggleOrder = (orderId) => {
+    setExpandedOrder(prev => (prev === orderId ? null : orderId));
+  };
 
-  useEffect(() => {
-    fetchOrder()
-  }, [])
+  const formatDate = (iso) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
 
   return (
     <div className="account-page">
@@ -56,10 +56,10 @@ const AccountPage = () => {
           <div className="account-sidebar">
             <div className="user-info">
               <div className="user-avatar">
-                <span>{"JC"}</span>
+                <span>{user?.username?.slice(0, 2).toUpperCase() || 'U'}</span>
               </div>
-              <h3>{user.username}</h3>
-              <p>{user.email}</p>
+              <h3>{user?.username}</h3>
+              <p>{user?.email}</p>
             </div>
 
             <ul className="account-nav">
@@ -71,18 +71,7 @@ const AccountPage = () => {
                 <FontAwesomeIcon icon={faShoppingBag} />
                 <span>Orders</span>
               </li>
-              <li>
-                <FontAwesomeIcon icon={faCreditCard} />
-                <span>Payment Methods</span>
-              </li>
-              <li>
-                <FontAwesomeIcon icon={faHeart} />
-                <span>Wishlist</span>
-              </li>
-              <li className="logout" onClick={() => {
-                logout();
-                navigate('/login');
-              }}>
+              <li className="logout" onClick={handleLogout}>
                 <FontAwesomeIcon icon={faSignOutAlt} />
                 <span>Logout</span>
               </li>
@@ -93,50 +82,30 @@ const AccountPage = () => {
             <div className="account-section">
               <div className="section-header">
                 <h2>Personal Information</h2>
-                <button className="edit-btn">
-                  <FontAwesomeIcon icon={faEdit} />
-                  Edit
-                </button>
               </div>
 
               <div className="profile-details">
                 <div className="profile-row">
                   <div className="profile-field">
-                    <label>First Name</label>
-                    <p>{user.firstName}</p>
+                    <label>Username</label>
+                    <p>{user?.username || '—'}</p>
                   </div>
                   <div className="profile-field">
-                    <label>Last Name</label>
-                    <p>{user.lastName}</p>
+                    <label>Email</label>
+                    <p>{user?.email || '—'}</p>
                   </div>
                 </div>
 
                 <div className="profile-row">
                   <div className="profile-field">
-                    <label>Email</label>
-                    <p>{user.email}</p>
+                    <label>Phone</label>
+                    <p>{user?.phone_number || '—'}</p>
                   </div>
                   <div className="profile-field">
-                    <label>Phone</label>
-                    <p>{user.phone}</p>
+                    <label>Address</label>
+                    <p>{user?.address || '—'}</p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="account-section">
-              <div className="section-header">
-                <h2>Address</h2>
-                <button className="edit-btn">
-                  <FontAwesomeIcon icon={faEdit} />
-                  Edit
-                </button>
-              </div>
-
-              <div className="address-details">
-                <p>{user.address}</p>
-                <p>{user.city}, {user.state} {user.zipCode}</p>
-                <p>{user.country}</p>
               </div>
             </div>
 
@@ -145,50 +114,47 @@ const AccountPage = () => {
                 <h2>Order History</h2>
               </div>
 
-              {orders.length > 0 ? (
+              {ordersLoading ? (
+                <p className="loading-text">Loading orders…</p>
+              ) : orders.length > 0 ? (
                 <div className="order-history">
                   {orders.map(order => (
-                    <div className="order-item" key={order.id}>
-                      <div className="order-header" onClick={() => toggleOrderDetails(order.id)}>
-                        <div className="order-summary">
+                    <div className="order-item" key={order.order_id}>
+                      <div className="order-header" onClick={() => toggleOrder(order.order_id)}>
+                        <div className="order-summary-row">
                           <div className="order-id">
-                            <span>Order #:</span> {order.id}
+                            <span>Order ID:</span> {order.order_id}
                           </div>
                           <div className="order-date">
-                            <span>Date:</span> {order.date}
+                            <span>Date:</span> {formatDate(order.created_at)}
                           </div>
                         </div>
                         <div className="order-info">
                           <div className="order-total">
-                            <span>Total:</span> ${order.total.toFixed(2)}
+                            <span>Total:</span> ₹{Number(order.total_amount).toLocaleString('en-IN')}
                           </div>
-                          <div className="order-status">
-                            <span className={`status-badge ${order.status.toLowerCase()}`}>
-                              {order.status}
-                            </span>
+                          <div className="order-payment">
+                            <span className="status-badge">{order.payment_method}</span>
                           </div>
+                          <FontAwesomeIcon icon={expandedOrder === order.order_id ? faChevronUp : faChevronDown} />
                         </div>
                       </div>
 
-                      {expandedOrder === order.id && (
+                      {expandedOrder === order.order_id && (
                         <div className="order-details">
                           <h4>Items</h4>
                           <div className="order-items">
-                            {order.items.map(item => (
-                              <div className="order-product" key={item.id}>
+                            {(order.product_cart || []).map((item, idx) => (
+                              <div className="order-product" key={idx}>
                                 <div className="product-info">
-                                  <p className="product-name">{item.name}</p>
-                                  <p className="product-price">${item.price.toFixed(2)} x {item.quantity}</p>
+                                  <p className="product-name">Product #{item.product_id}</p>
+                                  <p className="product-price">₹{Number(item.price).toLocaleString('en-IN')} × {item.quantity}</p>
                                 </div>
                                 <div className="product-total">
-                                  ${(item.price * item.quantity).toFixed(2)}
+                                  ₹{(item.price * item.quantity).toLocaleString('en-IN')}
                                 </div>
                               </div>
                             ))}
-                          </div>
-                          <div className="order-actions">
-                            <button className="btn-secondary">Track Order</button>
-                            <button className="btn-outline">View Invoice</button>
                           </div>
                         </div>
                       )}

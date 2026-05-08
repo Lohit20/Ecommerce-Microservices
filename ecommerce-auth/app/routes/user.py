@@ -16,20 +16,25 @@ def register(user: UserRegister):
     if user_collection.find_one({"email": user.email}):
         raise HTTPException(status_code=400, detail="Email already exists")
 
-
     #Prepare the user dict and hash the password
     user_dict = user.dict()
     user_dict["password"] = hash_password(user.password)
 
-
     #Insert into MongoDB
     result = user_collection.insert_one(user_dict)
 
-    return {
-        "message": "User registered successfully",
-        "user_id": str(result.inserted_id),
-        "user":user
+    #Generate JWT token (same as login)
+    access_token = create_access_token(data={"sub": user.email})
+
+    user_data = {
+        "id": str(result.inserted_id),
+        "username": user.username,
+        "email": user.email,
+        "address": user.address,
+        "phone_number": user.phone_number
     }
+
+    return {"token": access_token, "token_type": "bearer", "user": user_data}
 
 
 #Route to login user and return JWT

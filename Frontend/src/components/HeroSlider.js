@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
@@ -9,41 +9,19 @@ const HeroSlider = () => {
   const fallbackImage = '/Images/aleksandar-andreev-5vRSlHMj5uM-unsplash.jpg';
   
   // Local images from public/Images folder
-  const imagesList = [
+  const imagesList = useMemo(() => [
     '/Images/aleksandar-andreev-5vRSlHMj5uM-unsplash.jpg',
     '/Images/baby-natur-aNGHqUAITYc-unsplash.jpg',
     '/Images/freestocks-_3Q3tsJ01nc-unsplash.jpg'
-  ];
-  
-  // Error handling for image loading
-  const [imagesLoaded, setImagesLoaded] = useState(true);
-  const [imageErrors, setImageErrors] = useState([]);
+  ], []);
   
   // Preload images to check if they exist
   useEffect(() => {
-    const preloadImages = async () => {
-      try {
-        const promises = imagesList.map((src) => {
-          return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.src = src;
-            img.onload = () => resolve(src);
-            img.onerror = () => reject(src);
-          });
-        });
-        
-        await Promise.all(promises);
-        setImagesLoaded(true);
-      } catch (errorSrc) {
-        console.error(`Failed to load image: ${errorSrc}`);
-        setImageErrors(prev => [...prev, errorSrc]);
-        // Continue showing the slider even if some images fail to load
-        setImagesLoaded(true);
-      }
-    };
-    
-    preloadImages();
-  }, []);
+    imagesList.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, [imagesList]);
   
   // Shuffle the images array to display in random order
   const shuffleArray = (array) => {
@@ -62,26 +40,26 @@ const HeroSlider = () => {
   const slides = [
     {
       id: 1,
-      title: 'Colorful Textile Collection',
-      subtitle: 'Explore our vibrant selection of fabrics and textiles',
-      buttonText: 'Shop Now',
-      buttonLink: '/category/textiles',
+      title: 'Shop Everything in One Place',
+      subtitle: 'Electronics, home essentials, fashion, beauty & more — 685+ products',
+      buttonText: 'Browse All Products',
+      buttonLink: '/shop',
       image: randomImages[0]
     },
     {
       id: 2,
-      title: 'Fashion Variety',
-      subtitle: 'Discover our diverse range of clothing options',
-      buttonText: 'Explore',
-      buttonLink: '/category/clothing',
+      title: 'Top Electronics & Appliances',
+      subtitle: 'TVs, audio gear, cameras, kitchen appliances — best prices guaranteed',
+      buttonText: 'Shop Electronics',
+      buttonLink: '/category/tv, audio & cameras',
       image: randomImages[1]
     },
     {
       id: 3,
-      title: 'Premium Shirts',
-      subtitle: 'Quality shirts for every occasion',
-      buttonText: 'View Collection',
-      buttonLink: '/category/shirts',
+      title: 'Home, Fashion & More',
+      subtitle: 'From clothing and shoes to home & kitchen — everything delivered to you',
+      buttonText: 'Explore Categories',
+      buttonLink: '/shop',
       image: randomImages[2]
     }
   ];
