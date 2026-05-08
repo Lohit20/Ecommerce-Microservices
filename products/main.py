@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, Body
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional
 from models import Product
+from fastapi.middleware.cors import CORSMiddleware
+
 import os
 
 app = FastAPI()
@@ -14,9 +16,25 @@ DB_NAME = "ecommerce_db"
 Collection = "products"
 
 
+
+
 client = AsyncIOMotorClient(MONGO_URI)
 db = client[DB_NAME]
 collection = db[Collection]
+
+origins = [
+    "http://localhost:3000",   # React/Frontend dev server
+    "http://127.0.0.1:3000",   # Alternate localhost
+    "http:/192.168.1.244:3000"  # Production frontend domain
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,             # List of allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],               # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],               # Allow all headers
+)
 
 
 @app.get("/get_all_products/")

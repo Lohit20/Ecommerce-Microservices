@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSearch, faShoppingCart, faUser, faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faShoppingCart, faUser, faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import './Header.css';
+
+const CATEGORIES = [
+  { label: "TV & Audio", path: "/category/tv, audio & cameras" },
+  { label: "Home & Kitchen", path: "/category/home & kitchen" },
+  { label: "Sports", path: "/category/sports & fitness" },
+  { label: "Appliances", path: "/category/appliances" },
+  { label: "Beauty", path: "/category/beauty & health" },
+  { label: "Fashion", path: "/category/men's clothing" },
+];
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { cart } = useCart();
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
@@ -18,33 +31,25 @@ const Header = () => {
       <div className="container">
         <div className="header-content">
           <div className="logo">
-            <Link to="/">
-              <h1>TrendVibe</h1>
-            </Link>
+            <Link to="/"><h1>TrendVibe</h1></Link>
           </div>
-          
+
           <nav className={`main-nav ${mobileMenuOpen ? 'active' : ''}`}>
-            <button className="close-menu" onClick={toggleMobileMenu}>
+            <button className="close-menu" onClick={() => setMobileMenuOpen(false)}>
               <FontAwesomeIcon icon={faTimes} />
             </button>
             <ul className="nav-links">
-              <li><Link to="/">Home</Link></li>
-              <li><Link to="/category/men's clothing">Men</Link></li>
-              <li><Link to="/category/women's clothing">Women</Link></li>
-              <li><Link to="/category/girls' clothing">Girls</Link></li>
-              <li><Link to="/category/boys' clothing">Boys</Link></li>
-              <li><Link to="/category/sale">Sale</Link></li>
+              <li><Link to="/" onClick={() => setMobileMenuOpen(false)}>Home</Link></li>
+              <li><Link to="/shop" onClick={() => setMobileMenuOpen(false)}>Shop All</Link></li>
+              {CATEGORIES.map((c) => (
+                <li key={c.label}>
+                  <Link to={c.path} onClick={() => setMobileMenuOpen(false)}>{c.label}</Link>
+                </li>
+              ))}
             </ul>
           </nav>
-          
+
           <div className="header-actions">
-            <div className="search-box">
-              <input type="text" placeholder="Search..." />
-              <button className="search-btn">
-                <FontAwesomeIcon icon={faSearch} />
-              </button>
-            </div>
-            
             <div className="header-icons">
               <Link to="/cart" className="cart-icon">
                 <FontAwesomeIcon icon={faShoppingCart} />
@@ -52,13 +57,23 @@ const Header = () => {
                   <span className="cart-count">{cart.totalItems}</span>
                 )}
               </Link>
-              <Link to="/account" className="user-icon">
-                <FontAwesomeIcon icon={faUser} />
-              </Link>
+
+              {isAuthenticated ? (
+                <div className="user-menu">
+                  <Link to="/account" className="user-icon">
+                    <FontAwesomeIcon icon={faUser} />
+                  </Link>
+                  <button className="logout-btn" onClick={handleLogout}>Logout</button>
+                </div>
+              ) : (
+                <Link to="/login" className="user-icon">
+                  <FontAwesomeIcon icon={faUser} />
+                </Link>
+              )}
             </div>
-            
-            <button className="mobile-menu-toggle" onClick={toggleMobileMenu}>
-              <FontAwesomeIcon icon={faBars} />
+
+            <button className="mobile-menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <FontAwesomeIcon icon={mobileMenuOpen ? faTimes : faBars} />
             </button>
           </div>
         </div>

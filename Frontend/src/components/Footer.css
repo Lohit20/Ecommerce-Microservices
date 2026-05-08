@@ -228,3 +228,12 @@
     justify-content: center;
   }
 }
+.delivery-note {
+  margin-top: 16px;
+}
+
+.delivery-note p {
+  font-size: 0.82rem;
+  color: #aaa;
+  margin: 6px 0;
+}

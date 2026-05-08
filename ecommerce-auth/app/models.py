@@ -10,6 +10,7 @@ from typing import Optional
 class UserRegister(BaseModel):
     username: str
     email: EmailStr
+    
     password: str 
     address: str = Field(..., example="123 Main St, London")
     phone_number: str = Field(..., example="+44 7911 123456")

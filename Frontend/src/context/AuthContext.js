@@ -52,10 +52,11 @@ export const AuthProvider = ({ children }) => {
         console.log('Checking authentication status...');
         const token = localStorage.getItem('authToken');
         const savedUser = localStorage.getItem('user');
-        
+        console.log(token, savedUser)
         if (token && savedUser) {
           console.log('Found auth token and user data in localStorage');
           setIsAuthenticated(true);
+          localStorage.setItem('isAuth', true)
           setUser(JSON.parse(savedUser));
           try {
             logContextState('AuthContext', { isAuthenticated: true, user: JSON.parse(savedUser) });
@@ -84,7 +85,7 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
       }
     };
-    
+
     checkAuthStatus();
   }, []);
 
@@ -93,23 +94,24 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await authService.login(userData);
-      
+      console.log(response)
       const { token, user } = response.data;
-      
+      console.log(user)
+
       // Store auth data in localStorage
       localStorage.setItem('authToken', token);
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       // Update state
       setUser(user);
       setIsAuthenticated(true);
-      
+
       return { success: true };
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Invalid credentials. Please try again.' 
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Invalid credentials. Please try again.'
       };
     }
   };
@@ -119,7 +121,7 @@ export const AuthProvider = ({ children }) => {
     // Clear auth data from localStorage
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    
+
     // Update state
     setUser(null);
     setIsAuthenticated(false);
@@ -131,23 +133,23 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await authService.register(userData);
-      
+
       const { token, user } = response.data;
-      
+
       // Store auth data in localStorage
       localStorage.setItem('authToken', token);
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       // Update state
       setUser(user);
       setIsAuthenticated(true);
-      
+
       return { success: true };
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
-      return { 
-        success: false, 
-        message: err.response?.data?.message || 'Registration failed. Please try again.' 
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Registration failed. Please try again.'
       };
     }
   };

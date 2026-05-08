@@ -1,12 +1,27 @@
 from fastapi import FastAPI, HTTPException
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional,List, Dict, Any
+from fastapi.middleware.cors import CORSMiddleware
 from models import Product
 import httpx
 from operator import itemgetter
 
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000",   # React/Frontend dev server
+    "http://127.0.0.1:3000",   # Alternate localhost
+    "http:/192.168.1.244:3000"  # Production frontend domain
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,             # List of allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],               # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],               # Allow all headers
+)
 
 # MongoDB Connection
 MONGO_URI = "mongodb://localhost:27017"

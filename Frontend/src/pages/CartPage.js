@@ -1,133 +1,107 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash, faPlus, faMinus } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faPlus, faMinus, faShoppingBag } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
 import './CartPage.css';
-import { formatPrice } from '../utils/priceUtils';
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
 
-  const handleRemoveItem = (itemKey) => {
-    removeFromCart(itemKey);
+  const handleRemove = (productId) => removeFromCart(productId);
+  const handleQty = (productId, current, delta) => {
+    const next = current + delta;
+    if (next <= 0) removeFromCart(productId);
+    else updateQuantity(productId, next);
   };
 
-  const handleUpdateQuantity = (itemKey, currentQuantity, change) => {
-    const newQuantity = currentQuantity + change;
-    if (newQuantity <= 0) {
-      removeFromCart(itemKey);
-    } else {
-      updateQuantity(itemKey, newQuantity);
-    }
-  };
-
-  const handleClearCart = () => {
-    if (window.confirm('Are you sure you want to clear your cart?')) {
-      clearCart();
-    }
-  };
+  const formatRupees = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
   return (
     <div className="cart-page">
       <div className="container">
-        <h1 className="page-title">Your Shopping Cart</h1>
-        
-        {cart.items.length === 0 ? (
+        <h1 className="page-title">Shopping Cart</h1>
+        <p className="cart-count">{cart.totalItems} item{cart.totalItems !== 1 ? 's' : ''}</p>
+
+        {!cart.items || cart.items.length === 0 ? (
           <div className="empty-cart">
-            <p>Your cart is empty.</p>
-            <Link to="/" className="shop-now-button">Shop Now</Link>
+            <FontAwesomeIcon icon={faShoppingBag} className="empty-icon" />
+            <h3>Your cart is empty</h3>
+            <p>Looks like you haven't added anything yet.</p>
+            <Link to="/" className="shop-now-button">Start Shopping</Link>
           </div>
         ) : (
-          <div className="cart-content">
+          <div className="cart-layout">
+            {/* Items */}
             <div className="cart-items">
-              <div className="cart-header">
-                <div className="cart-item-product">Product</div>
-                <div className="cart-item-price">Price</div>
-                <div className="cart-item-quantity">Quantity</div>
-                <div className="cart-item-total">Total</div>
-                <div className="cart-item-actions">Actions</div>
-              </div>
-              
-              {cart.items.map(item => (
-                <div className="cart-item" key={item.key}>
-                  <div className="cart-item-product">
-                    <div className="cart-item-image">
+              {cart.items.map((item) => (
+                <div className="cart-item" key={item.product_id}>
+                  <div className="cart-item-image">
+                    {item.image ? (
                       <img src={item.image} alt={item.name} />
-                    </div>
-                    <div className="cart-item-details">
-                      <h3 className="cart-item-name">{item.name}</h3>
-                      {item.size && <p className="cart-item-size">Size: {item.size}</p>}
-                      {item.color && <p className="cart-item-color">Color: {item.color}</p>}
-                    </div>
+                    ) : (
+                      <div className="no-image">No Image</div>
+                    )}
                   </div>
-                  
-                  <div className="cart-item-price">{formatPrice(item.price)}</div>
-                  
-                  <div className="cart-item-quantity">
-                    <div className="quantity-control">
-                      <button 
-                        className="quantity-btn"
-                        onClick={() => handleUpdateQuantity(item.key, item.quantity, -1)}
-                      >
-                        <FontAwesomeIcon icon={faMinus} />
-                      </button>
-                      <div className="quantity-display">{item.quantity}</div>
-                      <button 
-                        className="quantity-btn"
-                        onClick={() => handleUpdateQuantity(item.key, item.quantity, 1)}
-                      >
-                        <FontAwesomeIcon icon={faPlus} />
-                      </button>
+
+                  <div className="cart-item-details">
+                    <h3 className="cart-item-name">{item.name || `Product #${item.product_id}`}</h3>
+                    <div className="cart-item-price">
+                      <span className="current-price">{formatRupees(item.price)}</span>
+                      {item.actual_price && item.actual_price > item.price && (
+                        <span className="original-price">{formatRupees(item.actual_price)}</span>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="cart-item-total">
-                    {formatPrice(item.price * item.quantity)}
-                  </div>
-                  
-                  <div className="cart-item-actions">
-                    <button 
-                      className="remove-item-btn"
-                      onClick={() => handleRemoveItem(item.key)}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
+
+                  <div className="quantity-control">
+                    <button className="qty-btn" onClick={() => handleQty(item.product_id, item.quantity, -1)}>
+                      <FontAwesomeIcon icon={faMinus} />
+                    </button>
+                    <span className="qty-value">{item.quantity}</span>
+                    <button className="qty-btn" onClick={() => handleQty(item.product_id, item.quantity, 1)}>
+                      <FontAwesomeIcon icon={faPlus} />
                     </button>
                   </div>
+
+                  <div className="cart-item-subtotal">
+                    {formatRupees(item.price * item.quantity)}
+                  </div>
+
+                  <button className="remove-btn" onClick={() => handleRemove(item.product_id)} title="Remove">
+                    <FontAwesomeIcon icon={faTrash} />
+                  </button>
                 </div>
               ))}
-            </div>
-            
-            <div className="cart-summary">
-              <h2 className="summary-title">Order Summary</h2>
-              
-              <div className="summary-row">
-                <span>Subtotal</span>
-                <span>{formatPrice(cart.totalPrice)}</span>
-              </div>
-              
-              <div className="summary-row">
-                <span>Shipping</span>
-                <span>Free</span>
-              </div>
-              
-              <div className="summary-row total">
-                <span>Total</span>
-                <span>{formatPrice(cart.totalPrice)}</span>
-              </div>
-              
-              <Link to="/checkout" className="checkout-button">
-                Proceed to Checkout
-              </Link>
-              
-              <div className="cart-actions">
-                <button className="clear-cart-button" onClick={handleClearCart}>
+
+              <div className="cart-footer-actions">
+                <button className="clear-btn" onClick={() => window.confirm('Clear cart?') && clearCart()}>
                   Clear Cart
                 </button>
-                <Link to="/" className="continue-shopping">
-                  Continue Shopping
-                </Link>
+                <Link to="/" className="continue-link">← Continue Shopping</Link>
               </div>
+            </div>
+
+            {/* Summary */}
+            <div className="cart-summary">
+              <h2>Order Summary</h2>
+              <div className="summary-row">
+                <span>Items ({cart.totalItems})</span>
+                <span>{formatRupees(cart.totalPrice)}</span>
+              </div>
+              <div className="summary-row">
+                <span>Delivery</span>
+                <span className="free-tag">FREE</span>
+              </div>
+              <div className="summary-divider" />
+              <div className="summary-row total">
+                <span>Total</span>
+                <span>{formatRupees(cart.totalPrice)}</span>
+              </div>
+              <Link to="/checkout" className="checkout-button">
+                Proceed to Checkout →
+              </Link>
+              <p className="secure-note">🔒 Secure checkout</p>
             </div>
           </div>
         )}

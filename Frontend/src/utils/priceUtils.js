@@ -7,17 +7,8 @@
  * @returns {string} Formatted price with or without currency symbol
  */
 export const formatPrice = (price, includeCurrency = true) => {
-  // Skip formatting if price is undefined or null
-  if (price == null) {
-    return '';
-  }
-  
-  // Ensure we're working with a number by removing any existing currency symbols
-  let numericPrice = price;
-  if (typeof price === 'string') {
-    numericPrice = parseFloat(price.replace(/[£$€]/g, ''));
-  }
-  
-  // Return formatted price with or without currency symbol
-  return includeCurrency ? `£${numericPrice.toFixed(2)}` : numericPrice.toFixed(2);
+  if (price == null) return '';
+  let n = typeof price === 'string' ? parseFloat(price.replace(/[£$€₹]/g, '')) : price;
+  if (isNaN(n)) return '';
+  return includeCurrency ? `₹${n.toLocaleString('en-IN')}` : n.toLocaleString('en-IN');
 };
