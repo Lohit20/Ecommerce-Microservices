@@ -1,6 +1,6 @@
-# E-Commerce Microservices Platform
+# Velour — E-Commerce Microservices Platform
 
-A full-stack e-commerce application built with a microservices architecture. The backend is composed of four independent FastAPI services, each owning its own database and responsible for a distinct domain. The frontend is a React single-page application whose Nginx container also acts as an API gateway, routing all requests through a single entry point.
+A full-stack UK e-commerce application built with a microservices architecture. The backend is composed of four independent FastAPI services, each owning its own database and responsible for a distinct domain. The frontend is a React single-page application whose Nginx container also acts as an API gateway, routing all requests through a single entry point.
 
 ---
 
@@ -16,7 +16,8 @@ A full-stack e-commerce application built with a microservices architecture. The
 8. [API Reference](#api-reference)
 9. [Frontend Routes](#frontend-routes)
 10. [Database Schema](#database-schema)
-11. [Future Enhancements](#future-enhancements)
+11. [Recent Changes](#recent-changes)
+12. [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -101,7 +102,7 @@ Ecommerce-Microservices/
 │   └── requirements.txt
 │
 ├── recommendation_and_search_system/   # Search and recommendation service
-│   ├── main.py                         # Semantic search + category recommendations
+│   ├── main.py                         # Local scoring search + recommendations
 │   ├── models.py                       # Product model
 │   ├── Dockerfile
 │   └── requirements.txt
@@ -112,15 +113,19 @@ Ecommerce-Microservices/
 │   └── Dockerfile
 │
 ├── Frontend/                       # React single-page application
+│   ├── public/
+│   │   └── index.html              # Page title, meta description, font imports
 │   ├── src/
 │   │   ├── App.js                  # Root component, routing, context providers
+│   │   ├── App.css                 # Global design tokens (CSS custom properties)
 │   │   ├── pages/                  # One component per route (9 pages)
-│   │   ├── components/             # Reusable UI components (Header, ProductCard, etc.)
-│   │   ├── context/                # AuthContext, CartContext, SearchContext
+│   │   ├── components/             # Reusable UI (Header, Footer, ProductCard, HeroSlider)
+│   │   ├── context/                # AuthContext, CartContext
 │   │   ├── services/api.js         # Axios clients using relative /api/* paths
-│   │   └── utils/                  # Price formatting, debug helpers
+│   │   └── utils/
+│   │       └── priceUtils.js       # INR → GBP conversion and formatting
 │   ├── nginx.conf                  # Nginx config: API gateway + SPA routing
-│   ├── Dockerfile                  # Multi-stage: Node build → Nginx serve
+│   ├── Dockerfile                  # Multi-stage: Node 18 build → Nginx serve
 │   └── package.json
 │
 └── docker-compose.yml              # Orchestrates all services
@@ -165,8 +170,9 @@ Cart data lives in `cart_db.carts`; completed orders in `cart_db.transactions`.
 
 Provides two public endpoints:
 
-- **Semantic search** — Accepts a text query, fetches up to 100 products from the Products Service API, then calls the Hugging Face Inference API (`sentence-transformers/all-MiniLM-L6-v2`) to score similarity and return the top-k results.
-- **Category recommendations** — Fetches all in-stock products from the Products Service, groups them by `main_category` in Python, and returns the top-rated items per category.
+- **Search** — Accepts a free-text query and searches all 685+ products using a local multi-factor scoring algorithm. Scores are computed across product name, sub-category, and main category, with bonuses for ratings, popularity, and discount depth. Natural language price constraints are understood (`"under £50"`, `"below £100"`). A category alias map resolves common terms (e.g. `"headphones"`, `"bluetooth"`, `"trainers"`) to their correct category. If a Hugging Face API token is configured and local results are sparse, semantic similarity scoring is attempted as a supplementary pass. The engine always returns results — it falls back to top-rated products if no query matches are found.
+
+- **Category recommendations** — Fetches all in-stock products from the Products Service, groups them by `main_category` in Python, and returns the top-rated items per category for the homepage recommendation strips.
 
 This service has no direct database connection. All product data is retrieved through the Products Service API.
 
@@ -176,21 +182,22 @@ This service has no direct database connection. All product data is retrieved th
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, React Router v6, Axios, Bootstrap 5, FontAwesome |
+| Frontend | React 18, React Router v6, Axios, FontAwesome, Poppins + Playfair Display (Google Fonts) |
 | Backend | FastAPI 0.115, Python 3.11, Uvicorn |
 | Authentication | python-jose 3.3, bcrypt 4.3, passlib 1.7 |
 | Database | MongoDB with Motor 3.7 (async driver) |
 | Inter-service HTTP | httpx 0.28 (async) |
-| ML / Search | Hugging Face Inference API — `sentence-transformers/all-MiniLM-L6-v2` |
+| Search | Local scoring engine (primary); Hugging Face `sentence-transformers/all-MiniLM-L6-v2` (optional fallback) |
 | Infrastructure | Docker, Docker Compose, Nginx alpine |
+| CI/CD | GitHub Actions — Docker Compose build + pytest integration tests |
 
 ---
 
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) — required to run the full stack
-- [Node.js 20+](https://nodejs.org/) and npm — only needed when running the frontend outside Docker
-- A [Hugging Face](https://huggingface.co/) account and API token — required for semantic search
+- [Node.js 18+](https://nodejs.org/) and npm — only needed when running the frontend outside Docker
+- A [Hugging Face](https://huggingface.co/) API token — **optional**; search works fully without it using the local scoring engine
 
 ---
 
@@ -209,6 +216,8 @@ Create a `.env` file in the root directory (same level as `docker-compose.yml`):
 
 ```env
 JWT_SECRET_KEY=your_strong_secret_key_here
+
+# Optional — enables Hugging Face semantic search as a fallback for sparse queries
 HF_API_TOKEN=your_hugging_face_api_token_here
 ```
 
@@ -228,8 +237,6 @@ Docker Compose starts services in this order:
 5. **Frontend** — starts last, after all backend services are up.
 
 ### 4. Open the application
-
-The application is available at a single URL:
 
 ```
 http://localhost:3000
@@ -256,7 +263,7 @@ For the frontend:
 
 ```bash
 cd Frontend
-npm install
+npm install --legacy-peer-deps
 npm start   # Dev server on http://localhost:3000
 ```
 
@@ -273,7 +280,7 @@ When running outside Docker, set `MONGO_URI`, `JWT_SECRET_KEY`, `ALGORITHM`, and
 | `ALGORITHM` | Auth, Cart, Products | JWT signing algorithm | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Auth | Token validity duration in minutes | `30` |
 | `PRODUCTS_SERVICE_URL` | Cart, Recommendation | Internal URL of the Products Service | `http://products_service:8000` |
-| `HF_API_TOKEN` | Recommendation | Hugging Face API token for semantic search | *(empty — search will fail without this)* |
+| `HF_API_TOKEN` | Recommendation | Hugging Face API token for optional semantic search fallback | *(empty — local search works without this)* |
 
 ---
 
@@ -294,8 +301,8 @@ All endpoints are accessible through the gateway at `http://localhost:3000`. The
   "username": "johndoe",
   "email": "john@example.com",
   "password": "yourpassword",
-  "address": "123 Main St",
-  "phone_number": "555-1234"
+  "address": "123 High Street, London, SW1A 1AA",
+  "phone_number": "+44 7700 900123"
 }
 ```
 
@@ -316,8 +323,8 @@ All endpoints are accessible through the gateway at `http://localhost:3000`. The
     "id": "<mongodb_object_id>",
     "username": "johndoe",
     "email": "john@example.com",
-    "address": "123 Main St",
-    "phone_number": "555-1234"
+    "address": "123 High Street, London, SW1A 1AA",
+    "phone_number": "+44 7700 900123"
   }
 }
 ```
@@ -378,11 +385,20 @@ Payment method options: `credit_card`, `paypal`, `cod`
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | `GET` | `/api/search/recommendations` | Top-rated products grouped by category | No |
-| `GET` | `/api/search/product_semantic_search` | Semantic search over product names | No |
+| `GET` | `/api/search/product_semantic_search` | Search across all products | No |
 
-**Semantic search query parameters:**
-- `query` (string, required) — the search term
-- `top_k` (integer, optional, default 5) — number of results to return
+**Search query parameters:**
+- `query` (string, required) — free-text search term; supports natural language price constraints e.g. `"wireless headphones under £50"`
+- `top_k` (integer, optional, default `24`) — maximum number of results to return
+
+**Search examples:**
+
+| Query | What it does |
+|-------|-------------|
+| `wireless headphones` | Matches name + sub-category; maps "wireless"/"headphones" to TV & Audio category |
+| `yoga mat under £30` | Matches sports & fitness products priced below £30 |
+| `skincare` | Maps alias to Beauty & Health category |
+| `running shoes` | Matches Men's/Women's Shoes category via alias |
 
 ---
 
@@ -390,11 +406,11 @@ Payment method options: `credit_card`, `paypal`, `cod`
 
 | Route | Page | Auth Required |
 |-------|------|---------------|
-| `/` | Home — hero slider, category grid, recommendations | No |
-| `/shop` | All products listing | No |
-| `/product/:id` | Product detail page | No |
-| `/category/:category` | Products filtered by category | No |
-| `/cart` | Shopping cart review | No |
+| `/` | Home — hero slider, USP strip, category grid, search, recommendations | No |
+| `/shop` | All products listing with filters (category, price, rating) | No |
+| `/product/:id` | Product detail page with zoom, quantity selector, related products | No |
+| `/category/:category` | Products filtered by category with sort and price range slider | No |
+| `/cart` | Shopping cart review with quantity controls | No |
 | `/checkout` | Payment selection and order confirmation | Yes |
 | `/login` | Login form | No |
 | `/register` | Registration form | No |
@@ -451,6 +467,44 @@ created_at      DateTime
 
 ---
 
+## Recent Changes
+
+### Branding & Localisation
+- Renamed from TrendVibe to **Velour**
+- All prices converted from INR to **GBP (£)** using a `toGBP()` utility (rate: 106 INR = £1) applied consistently across every page, cart total, order history, and price filter slider
+- Locale changed to `en-GB` throughout
+- Footer contact details updated to UK phone, `.co.uk` email, and London address
+- Registration form placeholders updated to UK phone and postcode format
+- Free delivery threshold set to £50
+
+### Frontend Redesign
+- **Design system** — CSS custom properties throughout; Poppins as primary font, Playfair Display for hero headings
+- **Announcement bar** — top strip with delivery/returns/authenticity messaging
+- **Hero slider** — taller (560px), pill-shaped eyebrow badge and CTA button, Playfair Display headings
+- **USP strip** — icons in rounded blue squares instead of plain emoji
+- **Category tiles** — white cards with coloured icon boxes, blue border and lift on hover
+- **Product cards** — "Add to Cart" button slides up from the image on hover; price in bold dark text
+- **Section headers** — blue left-bar accent; "View All" as pill-outline button
+- **All emoji** replaced with FontAwesome solid icons across categories, USP strip, and footer
+- **Skeleton loaders** — smooth wave animation
+
+### Search Improvements
+- Search now covers **all 685+ products** (previously limited to the first 100)
+- **Local scoring engine** replaces sole dependency on Hugging Face API:
+  - Weighted scoring across name, sub-category, and main category
+  - Category alias map (`"headphones"` → TV & Audio, `"yoga"` → Sports & Fitness, etc.)
+  - Natural language price constraint parsing (`"under £50"`, `"below £100"`)
+  - Quality tiebreakers: rating, review count, discount depth
+- Hugging Face semantic search retained as an **optional fallback** when a token is configured and local results are sparse; failures are silently ignored
+- Default result count increased from 5 to **24**
+- Search debounce reduced from 500 ms to **300 ms**
+
+### Infrastructure
+- Frontend Dockerfile switched to **Node 18** for react-scripts 5.x compatibility
+- `package-lock.json` committed to pin deterministic dependency resolution and fix `ajv` version conflict in CI
+
+---
+
 ## Future Enhancements
 
 - **Payment gateway** — Integrate a real payment provider such as Stripe for card processing.
@@ -459,6 +513,7 @@ created_at      DateTime
 - **Wishlist and reviews** — Allow users to save products and submit ratings.
 - **Asynchronous stock updates** — Replace synchronous Cart→Products HTTP calls with a message queue (e.g., RabbitMQ) for better resilience under high load.
 - **Pagination** — Add cursor-based pagination to the products and transaction listing endpoints.
+- **Search index** — Pre-build an in-memory inverted index on service startup to eliminate per-request full-scan cost as the catalogue grows.
 
 ---
 
