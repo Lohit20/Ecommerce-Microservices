@@ -72,5 +72,4 @@ Thumbs.db
 /Frontend/.gatsby
 
 # Optional
-/Frontend/package-lock.json
 /Frontend/yarn.lock
