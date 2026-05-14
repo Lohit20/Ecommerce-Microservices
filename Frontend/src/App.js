@@ -18,6 +18,7 @@ import './styles/ProductStyles.css';
 import './styles/Footer.css';
 import './App.css';
 import ScrollButton from './components/ScrollToTop';
+import ChatWidget from './components/ChatWidget';
 import { SearchProvider } from './context/SearchContext';
 // Import debug utilities with safe fallbacks
 let logComponentMount, logError, logNavigation;
@@ -130,6 +131,7 @@ function App() {
               </main>
               <Footer />
               <ScrollButton />
+              <ChatWidget />
             </div>
           </Router>
         </SearchProvider>

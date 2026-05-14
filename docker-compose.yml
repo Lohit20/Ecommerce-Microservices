@@ -94,6 +94,26 @@ services:
       - ecommerce_network
     restart: unless-stopped
 
+  # ── AI Assistant service ──────────────────────────────────────────────────
+  assistant_service:
+    build:
+      context: ./ai_assistant
+      dockerfile: Dockerfile
+    container_name: assistant_service
+    ports:
+      - "8005:8000"
+    environment:
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:4b}
+      - PRODUCTS_SERVICE_URL=http://products_service:8000
+      - CART_SERVICE_URL=http://cart_service:8000
+    depends_on:
+      - products_service
+      - cart_service
+    networks:
+      - ecommerce_network
+    restart: unless-stopped
+
   # ── Auth service ──────────────────────────────────────────────────────────
   auth_service:
     build:
@@ -127,6 +147,7 @@ services:
       - cart_service
       - recommendation_service
       - auth_service
+      - assistant_service
     networks:
       - ecommerce_network
     restart: unless-stopped

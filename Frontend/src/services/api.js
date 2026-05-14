@@ -60,3 +60,8 @@ export const recommendationService = {
   getRecommendations: () => RSApi.get('/recommendations'),
   searchProducts: (query) => RSApi.get(`/product_semantic_search?query=${encodeURIComponent(query)}`),
 };
+
+export const assistantService = {
+  chat: (payload) => axios.post('/api/assistant/chat', payload),
+  health: () => axios.get('/api/assistant/health'),
+};
