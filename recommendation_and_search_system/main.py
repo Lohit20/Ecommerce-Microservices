@@ -1,60 +1,54 @@
 from fastapi import FastAPI, HTTPException
-from motor.motor_asyncio import AsyncIOMotorClient
-from typing import Optional,List, Dict, Any
+from typing import List, Dict
 from fastapi.middleware.cors import CORSMiddleware
 from models import Product
-import httpx
+from collections import defaultdict
 from operator import itemgetter
-
+import httpx
+import os
 
 app = FastAPI()
 
 origins = [
-    "http://localhost:3000",   # React/Frontend dev server
-    "http://127.0.0.1:3000",   # Alternate localhost
-    "http:/192.168.1.244:3000"  # Production frontend domain
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://192.168.1.244:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,             # List of allowed origins
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],               # Allow all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],               # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# MongoDB Connection
-import os
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-DB_NAME = "ecommerce_db"
-Collection = "products"
-
-client = AsyncIOMotorClient(MONGO_URI)
-db = client[DB_NAME]
-collection = db[Collection]
-
-api_token = "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"
+PRODUCTS_SERVICE_URL = os.getenv("PRODUCTS_SERVICE_URL", "http://localhost:8001")
+api_token = os.getenv("HF_API_TOKEN", "")
 API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2"
 headers = {"Authorization": f"Bearer {api_token}"}
 
-# Hugging Face scoring
+
+async def fetch_all_products() -> List[dict]:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(f"{PRODUCTS_SERVICE_URL}/get_all_products/")
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Could not fetch products from products service")
+        return response.json()
+
+
 async def get_similarity_scores(source_sentence: str, sentences: List[str]) -> List[float]:
-    payload = {
-        "inputs": {
-            "source_sentence": source_sentence,
-            "sentences": sentences
-        }
-    }
-    async with httpx.AsyncClient() as client:
+    payload = {"inputs": {"source_sentence": source_sentence, "sentences": sentences}}
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(API_URL, headers=headers, json=payload)
         response.raise_for_status()
         return response.json()
 
 
-# /recommend endpoint
 @app.get("/product_semantic_search", response_model=List[Product])
 async def recommend_products(query: str, top_k: int = 5):
-    products = await collection.find({}, {"_id": 0}).to_list(length=100)
+    all_products = await fetch_all_products()
+    products = all_products[:100]
 
     if not products:
         raise HTTPException(status_code=404, detail="No products found")
@@ -66,47 +60,28 @@ async def recommend_products(query: str, top_k: int = 5):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=500, detail=f"Hugging Face API error: {str(e)}")
 
-    # Attach scores using map + zip (no loop or list comp)
     combined = map(lambda pair: {**pair[0], "score": pair[1]}, zip(products, scores))
-
-    # Sort using sorted() with itemgetter, then slice top_k
     top_products = list(sorted(combined, key=itemgetter("score"), reverse=True))[:top_k]
 
-    # Convert to Product instances using map (no loop)
-    return list(map(Product.parse_obj, top_products))
+    return [Product(**p) for p in top_products]
 
-
-async def aggregate_recommendations(top_n: int = 5) -> Dict[str, List[Product]]:
-    pipeline = [
-        {"$match": {"stock": {"$gt": 0}}},
-        {"$sort": {
-            "main_category": 1,
-            "ratings": -1,
-            "no_of_ratings": -1,
-            "discount_price": 1
-        }},
-        {"$group": {
-            "_id": "$main_category",
-            "products": {"$push": "$$ROOT"}
-        }},
-        {"$project": {
-            "_id": 0,
-            "main_category": "$_id",
-            "top_products": {"$slice": ["$products", top_n]}
-        }}
-    ]
-
-    cursor = collection.aggregate(pipeline)
-    result = await cursor.to_list(length=None)
-
-    # Map into Dict[str, List[Product]]
-    return {
-        item["main_category"]: [Product(**prod) for prod in item["top_products"]]
-        for item in result
-    }
 
 @app.get("/recommendations", response_model=Dict[str, List[Product]])
-async def fetch_recommendations():
-    return await aggregate_recommendations()
+async def fetch_recommendations(top_n: int = 5):
+    all_products = await fetch_all_products()
 
+    in_stock = [p for p in all_products if p.get("stock", 0) > 0]
 
+    by_category: Dict[str, List[dict]] = defaultdict(list)
+    for p in in_stock:
+        by_category[p["main_category"]].append(p)
+
+    result = {}
+    for category, products in by_category.items():
+        sorted_products = sorted(
+            products,
+            key=lambda p: (-p.get("ratings", 0), -p.get("no_of_ratings", 0), p.get("discount_price", 0))
+        )
+        result[category] = [Product(**p) for p in sorted_products[:top_n]]
+
+    return result

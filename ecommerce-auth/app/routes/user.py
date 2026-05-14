@@ -23,11 +23,11 @@ def register(user: UserRegister):
     #Insert into MongoDB
     result = user_collection.insert_one(user_dict)
 
-    #Generate JWT token (same as login)
-    access_token = create_access_token(data={"sub": user.email})
+    user_id = str(result.inserted_id)
+    access_token = create_access_token(data={"sub": user.email, "user_id": user_id})
 
     user_data = {
-        "id": str(result.inserted_id),
+        "id": user_id,
         "username": user.username,
         "email": user.email,
         "address": user.address,
@@ -50,10 +50,15 @@ def login(user: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
 
-    #Generate JWT
-    access_token = create_access_token(data={"sub": db_user["email"]})
-    # print( )
+    user_id = str(db_user["_id"])
+    access_token = create_access_token(data={"sub": db_user["email"], "user_id": user_id})
 
-    user={"id":str(db_user["_id"]),"username":db_user["username"],"email":db_user["email"],"address":db_user["address"],"phone_number":db_user["phone_number"]}
+    user = {
+        "id": user_id,
+        "username": db_user["username"],
+        "email": db_user["email"],
+        "address": db_user["address"],
+        "phone_number": db_user["phone_number"]
+    }
 
-    return {"token": access_token, "token_type": "bearer","user":user}
+    return {"token": access_token, "token_type": "bearer", "user": user}

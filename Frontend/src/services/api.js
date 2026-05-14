@@ -32,10 +32,10 @@ const createApiClient = (baseURL, withAuth = false) => {
   return client;
 };
 
-const authApi = createApiClient('http://localhost:8004/api');
-const productApi = createApiClient('http://localhost:8001/');
-const cartApi = createApiClient('http://localhost:8002/', true);
-const RSApi = createApiClient('http://localhost:8003/');
+const authApi = createApiClient('/api/auth');
+const productApi = createApiClient('/api/products');
+const cartApi = createApiClient('/api/cart', true);
+const RSApi = createApiClient('/api/search');
 
 export const authService = {
   register: (userData) => authApi.post('/auth/register', userData),

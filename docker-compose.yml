@@ -43,6 +43,8 @@ services:
       - "8001:8000"
     environment:
       - MONGO_URI=mongodb://mongodb:27017
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-supersecretkey_changeme_in_production}
+      - ALGORITHM=HS256
     depends_on:
       mongodb:
         condition: service_healthy
@@ -63,6 +65,8 @@ services:
     environment:
       - MONGO_URI=mongodb://mongodb:27017
       - PRODUCTS_SERVICE_URL=http://products_service:8000
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-supersecretkey_changeme_in_production}
+      - ALGORITHM=HS256
     depends_on:
       mongodb:
         condition: service_healthy
@@ -81,12 +85,11 @@ services:
     ports:
       - "8003:8000"
     environment:
-      - MONGO_URI=mongodb://mongodb:27017
+      - HF_API_TOKEN=${HF_API_TOKEN:-}
+      - PRODUCTS_SERVICE_URL=http://products_service:8000
     depends_on:
-      mongodb:
-        condition: service_healthy
-      seed:
-        condition: service_completed_successfully
+      products_service:
+        condition: service_started
     networks:
       - ecommerce_network
     restart: unless-stopped

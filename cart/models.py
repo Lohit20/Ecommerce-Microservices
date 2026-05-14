@@ -29,7 +29,7 @@ class Cart(BaseModel):
 
 class Order(BaseModel):
     order_id: int
-    user_id: int
+    user_id: str
     product_cart: List[ProductCartItem]
     total_amount: float
     payment_method: PaymentMethod
