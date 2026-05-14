@@ -24,22 +24,22 @@ A full-stack e-commerce application built with a microservices architecture. The
 
 ```
                         ┌─────────────────────────┐
-                        │   React Frontend          │
-                        │   localhost:3000          │
+                        │   React Frontend        │
+                        │   localhost:3000        │
                         └────────────┬────────────┘
                                      │
               ┌──────────────────────┼──────────────────────┐
-              │                      │                       │
+              │                      │                      │
    ┌──────────▼──────┐   ┌──────────▼──────┐   ┌──────────▼──────┐
-   │  Auth Service   │   │Products Service  │   │  Cart Service   │
-   │  localhost:8004 │   │  localhost:8001  │   │  localhost:8002 │
+   │  Auth Service   │   │Products Service │   │  Cart Service   │
+   │  localhost:8004 │   │  localhost:8001 │   │  localhost:8002 │
    └──────────┬──────┘   └──────────┬──────┘   └────────┬────────┘
-              │                      │                    │
-              │           ┌──────────▼──────┐            │ HTTP
-              │           │ Recommendation  │            │ calls
-              │           │  localhost:8003  │            │
-              │           └──────────┬──────┘   ┌────────▼────────┐
-              │                      │           │Products Service  │
+              │                     │                   │
+              │           ┌──────────▼──────┐           │ HTTP
+              │           │ Recommendation  │           │ calls
+              │           │  localhost:8003 │           │
+              │           └──────────┬──────┘    ┌────────▼────────┐
+              │                      │           │Products Service │
               └──────────────────────┼───────────┤  (stock update) │
                                      │           └─────────────────┘
                               ┌──────▼──────┐
