@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import HeroSlider from '../components/HeroSlider';
 import ProductCard from '../components/ProductCard';
@@ -6,25 +6,29 @@ import { productsService, recommendationService } from '../services/api';
 import './HomePage.css';
 
 const CATEGORIES = [
-  { key: "tv, audio & cameras",    label: 'TV & Audio',      emoji: '📺' },
-  { key: "home & kitchen",         label: 'Home & Kitchen',  emoji: '🏠' },
-  { key: "sports & fitness",       label: 'Sports',          emoji: '🏋️' },
-  { key: "appliances",             label: 'Appliances',      emoji: '🔌' },
-  { key: "beauty & health",        label: 'Beauty & Health', emoji: '💄' },
-  { key: "toys & baby products",   label: 'Toys & Baby',     emoji: '🧸' },
-  { key: "bags & luggage",         label: 'Bags & Luggage',  emoji: '👜' },
-  { key: "car & motorbike",        label: 'Car & Moto',      emoji: '🚗' },
-  { key: "men's clothing",         label: "Men's Fashion",   emoji: '👔' },
-  { key: "women's clothing",       label: "Women's Fashion", emoji: '👗' },
-  { key: "kids' fashion",          label: "Kids' Fashion",   emoji: '👶' },
-  { key: "grocery & gourmet foods",label: 'Grocery',         emoji: '🛒' },
-  { key: "pet supplies",           label: 'Pet Supplies',    emoji: '🐾' },
-  { key: "accessories",            label: 'Accessories',     emoji: '💍' },
-  { key: "women's shoes",          label: "Women's Shoes",   emoji: '👠' },
-  { key: "men's shoes",            label: "Men's Shoes",     emoji: '👟' },
-  { key: "industrial supplies",    label: 'Industrial',      emoji: '🔧' },
-  { key: "home, kitchen, pets",    label: 'Home & Pets',     emoji: '🏡' },
-  { key: "stores",                 label: 'Stores',          emoji: '🏪' },
+  { key: "tv, audio & cameras",     label: 'TV & Audio',      icon: '📺', color: '#eff6ff' },
+  { key: "home & kitchen",          label: 'Home & Kitchen',  icon: '🏠', color: '#f0fdf4' },
+  { key: "sports & fitness",        label: 'Sports',          icon: '🏋️', color: '#fff7ed' },
+  { key: "appliances",              label: 'Appliances',      icon: '🔌', color: '#faf5ff' },
+  { key: "beauty & health",         label: 'Beauty & Health', icon: '💄', color: '#fdf2f8' },
+  { key: "toys & baby products",    label: 'Toys & Baby',     icon: '🧸', color: '#fffbeb' },
+  { key: "bags & luggage",          label: 'Bags & Luggage',  icon: '👜', color: '#f0f9ff' },
+  { key: "car & motorbike",         label: 'Car & Moto',      icon: '🚗', color: '#f1f5f9' },
+  { key: "men's clothing",          label: "Men's Fashion",   icon: '👔', color: '#eff6ff' },
+  { key: "women's clothing",        label: "Women's Fashion", icon: '👗', color: '#fdf2f8' },
+  { key: "kids' fashion",           label: "Kids' Fashion",   icon: '👶', color: '#fffbeb' },
+  { key: "grocery & gourmet foods", label: 'Grocery',         icon: '🛒', color: '#f0fdf4' },
+  { key: "pet supplies",            label: 'Pet Supplies',    icon: '🐾', color: '#fff7ed' },
+  { key: "accessories",             label: 'Accessories',     icon: '💍', color: '#faf5ff' },
+  { key: "women's shoes",           label: "Women's Shoes",   icon: '👠', color: '#fdf2f8' },
+  { key: "men's shoes",             label: "Men's Shoes",     icon: '👟', color: '#eff6ff' },
+];
+
+const USP_ITEMS = [
+  { icon: '🚚', title: 'Free Delivery', subtitle: 'On orders above ₹999' },
+  { icon: '↩️', title: 'Easy Returns',  subtitle: '30-day hassle-free returns' },
+  { icon: '✅', title: '100% Authentic', subtitle: 'Genuine products only' },
+  { icon: '🔒', title: 'Secure Payments', subtitle: 'Safe & encrypted checkout' },
 ];
 
 const SkeletonCard = () => (
@@ -36,37 +40,13 @@ const SkeletonCard = () => (
   </div>
 );
 
-const SearchSection = ({ onSearch, loading, results, query }) => (
-  <section className="search-section">
-    <div className="search-box-wrapper">
-      <input
-        type="text"
-        className="search-input"
-        placeholder="Search products with AI semantic search…"
-        onChange={(e) => onSearch(e.target.value)}
-        defaultValue={query}
-      />
-      <span className="search-icon">🔍</span>
-    </div>
-    {query && (
-      <div className="search-results-area">
-        <h3 className="section-title">
-          {loading ? 'Searching…' : `Results for "${query}" (${results.length})`}
-        </h3>
-        {loading ? (
-          <div className="products-grid">
-            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : results.length > 0 ? (
-          <div className="products-grid">
-            {results.map((p) => <ProductCard key={p.product_id} product={p} />)}
-          </div>
-        ) : (
-          <p className="no-results">No products found. Try different keywords.</p>
-        )}
-      </div>
+const SectionHeader = ({ title, viewAllLink, viewAllLabel = 'View All →' }) => (
+  <div className="section-header">
+    <h2 className="section-title">{title}</h2>
+    {viewAllLink && (
+      <Link to={viewAllLink} className="view-all">{viewAllLabel}</Link>
     )}
-  </section>
+  </div>
 );
 
 const HomePage = () => {
@@ -76,130 +56,144 @@ const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState(null);
+  const searchTimeout = useRef(null);
 
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       try {
-        const prodRes = await productsService.getAllProducts();
-        setAllProducts(prodRes.data || []);
-      } catch (err) {
-        console.error('Failed to load products:', err);
+        const res = await productsService.getAllProducts();
+        setAllProducts(res.data || []);
+      } catch (e) {
+        // products unavailable
       } finally {
         setProductsLoading(false);
       }
-
       try {
-        const recRes = await recommendationService.getRecommendations();
-        setRecommendations(recRes.data || {});
-      } catch (err) {
-        console.error('Failed to load recommendations:', err);
+        const rec = await recommendationService.getRecommendations();
+        setRecommendations(rec.data || {});
+      } catch (e) {
+        // recommendations unavailable
       }
     };
-    loadData();
+    load();
   }, []);
 
   const handleSearch = (value) => {
     setSearchQuery(value);
-    if (searchTimeout) clearTimeout(searchTimeout);
-    if (!value.trim()) {
-      setSearchResults([]);
-      return;
-    }
+    clearTimeout(searchTimeout.current);
+    if (!value.trim()) { setSearchResults([]); return; }
     setSearchLoading(true);
-    const t = setTimeout(async () => {
+    searchTimeout.current = setTimeout(async () => {
       try {
         const res = await recommendationService.searchProducts(value);
         setSearchResults(res.data || []);
       } catch {
-        // Fallback: client-side filter
         const q = value.toLowerCase();
-        setSearchResults(allProducts.filter((p) =>
-          p.name.toLowerCase().includes(q) || p.main_category?.toLowerCase().includes(q)
-        ).slice(0, 10));
+        setSearchResults(
+          allProducts.filter((p) =>
+            p.name.toLowerCase().includes(q) || p.main_category?.toLowerCase().includes(q)
+          ).slice(0, 12)
+        );
       } finally {
         setSearchLoading(false);
       }
-    }, 600);
-    setSearchTimeout(t);
+    }, 500);
   };
 
-  // Pick a few featured products (top rated across all)
-  const featuredProducts = [...allProducts]
-    .sort((a, b) => b.ratings - a.ratings)
-    .slice(0, 8);
-
-  // Best deals (highest discount %)
+  const featuredProducts = [...allProducts].sort((a, b) => b.ratings - a.ratings).slice(0, 8);
   const bestDeals = [...allProducts]
     .filter((p) => p.actual_price > p.discount_price)
-    .sort((a, b) => (b.actual_price - b.discount_price) / b.actual_price - (a.actual_price - a.discount_price) / a.actual_price)
+    .sort((a, b) =>
+      (b.actual_price - b.discount_price) / b.actual_price -
+      (a.actual_price - a.discount_price) / a.actual_price
+    )
     .slice(0, 5);
 
   return (
     <div className="home-page">
       <HeroSlider />
 
+      {/* USP strip */}
+      <div className="usp-strip">
+        <div className="usp-inner">
+          {USP_ITEMS.map((item) => (
+            <div className="usp-item" key={item.title}>
+              <span className="usp-icon">{item.icon}</span>
+              <div>
+                <div className="usp-title">{item.title}</div>
+                <div className="usp-sub">{item.subtitle}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="container">
         {/* Search */}
-        <SearchSection
-          onSearch={handleSearch}
-          loading={searchLoading}
-          results={searchResults}
-          query={searchQuery}
-        />
+        <div className="search-section">
+          <div className="search-box-wrapper">
+            <span className="search-icon-left">🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search with AI — try 'wireless headphones under 2000'…"
+              onChange={(e) => handleSearch(e.target.value)}
+              defaultValue={searchQuery}
+            />
+          </div>
+          {searchQuery && (
+            <div className="search-results-area">
+              <SectionHeader
+                title={searchLoading ? 'Searching…' : `"${searchQuery}" — ${searchResults.length} results`}
+              />
+              {searchLoading ? (
+                <div className="products-grid">{[1,2,3,4].map(i => <SkeletonCard key={i} />)}</div>
+              ) : searchResults.length > 0 ? (
+                <div className="products-grid">
+                  {searchResults.map((p) => <ProductCard key={p.product_id} product={p} />)}
+                </div>
+              ) : (
+                <p className="no-results">No results found. Try different keywords.</p>
+              )}
+            </div>
+          )}
+        </div>
 
         {!searchQuery && (
           <>
-            {/* Category cards */}
-            <section className="categories-section">
-              <h2 className="section-title">Shop By Category</h2>
+            {/* Categories */}
+            <section className="home-section">
+              <SectionHeader title="Shop By Category" />
               <div className="categories-grid">
                 {CATEGORIES.map((cat) => (
-                  <Link
-                    to={`/category/${cat.key}`}
-                    key={cat.key}
-                    className="category-card"
-                  >
-                    <span className="category-emoji">{cat.emoji}</span>
+                  <Link to={`/category/${cat.key}`} key={cat.key} className="category-card" style={{ '--cat-bg': cat.color }}>
+                    <span className="category-icon">{cat.icon}</span>
                     <span className="category-label">{cat.label}</span>
-                    {recommendations[cat.key] && (
-                      <span className="category-count">
-                        {recommendations[cat.key].length}+ products
-                      </span>
-                    )}
                   </Link>
                 ))}
               </div>
+              <div className="browse-all-row">
+                <Link to="/shop" className="browse-all-btn">
+                  Browse All {allProducts.length || 685}+ Products →
+                </Link>
+              </div>
             </section>
 
-            {/* Browse all CTA */}
-            <div className="browse-all-cta">
-              <Link to="/shop" className="browse-all-btn">Browse All {allProducts.length || 685}+ Products</Link>
-            </div>
-
             {/* Top Rated */}
-            <section className="featured-section">
-              <div className="section-header">
-                <h2 className="section-title">⭐ Top Rated</h2>
-                <Link to="/shop" className="view-all">View All Products →</Link>
+            <section className="home-section">
+              <SectionHeader title="⭐ Top Rated" viewAllLink="/shop" />
+              <div className="products-grid">
+                {productsLoading
+                  ? [1,2,3,4,5].map(i => <SkeletonCard key={i} />)
+                  : featuredProducts.map((p) => <ProductCard key={p.product_id} product={p} />)
+                }
               </div>
-              {productsLoading ? (
-                <div className="products-grid">
-                  {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} />)}
-                </div>
-              ) : (
-                <div className="products-grid">
-                  {featuredProducts.map((p) => <ProductCard key={p.product_id} product={p} />)}
-                </div>
-              )}
             </section>
 
             {/* Best Deals */}
             {bestDeals.length > 0 && (
-              <section className="featured-section deals-section">
-                <div className="section-header">
-                  <h2 className="section-title">🔥 Best Deals</h2>
-                </div>
+              <section className="home-section deals-section">
+                <SectionHeader title="🔥 Best Deals" viewAllLink="/shop" />
                 <div className="products-grid">
                   {bestDeals.map((p) => <ProductCard key={p.product_id} product={p} />)}
                 </div>
@@ -208,11 +202,11 @@ const HomePage = () => {
 
             {/* Per-category recommendations */}
             {Object.entries(recommendations).slice(0, 3).map(([category, products]) => (
-              <section key={category} className="featured-section">
-                <div className="section-header">
-                  <h2 className="section-title">{category}</h2>
-                  <Link to={`/category/${category}`} className="view-all">View All →</Link>
-                </div>
+              <section key={category} className="home-section">
+                <SectionHeader
+                  title={category.replace(/\b\w/g, (c) => c.toUpperCase())}
+                  viewAllLink={`/category/${category}`}
+                />
                 <div className="products-grid">
                   {products.slice(0, 5).map((p) => <ProductCard key={p.product_id} product={p} />)}
                 </div>
