@@ -99,13 +99,15 @@ const HomePage = () => {
         const q = value.toLowerCase();
         setSearchResults(
           allProducts.filter((p) =>
-            p.name.toLowerCase().includes(q) || p.main_category?.toLowerCase().includes(q)
-          ).slice(0, 12)
+            p.name.toLowerCase().includes(q) ||
+            p.main_category?.toLowerCase().includes(q) ||
+            p.sub_category?.toLowerCase().includes(q)
+          ).slice(0, 24)
         );
       } finally {
         setSearchLoading(false);
       }
-    }, 500);
+    }, 300);
   };
 
   const featuredProducts = [...allProducts].sort((a, b) => b.ratings - a.ratings).slice(0, 8);
