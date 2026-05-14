@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ProductCard from '../components/ProductCard';
 import { productsService } from '../services/api';
+import { toGBP } from '../utils/priceUtils';
 import './AllProductsPage.css';
 
 const PAGE_SIZE = 24;
@@ -40,7 +41,7 @@ const AllProductsPage = () => {
         const res = await productsService.getAllProducts();
         const products = res.data || [];
         setAllProducts(products);
-        const top = Math.max(...products.map(p => p.discount_price));
+        const top = toGBP(Math.max(...products.map(p => p.discount_price)));
         setMaxPrice(top);
         setPriceFilter(top);
       } catch (err) {
@@ -61,7 +62,7 @@ const AllProductsPage = () => {
     return allProducts
       .filter(p => {
         if (selectedCategory && p.main_category !== selectedCategory) return false;
-        if (p.discount_price > priceFilter) return false;
+        if (toGBP(p.discount_price) > priceFilter) return false;
         if (p.ratings < minRating) return false;
         if (q && !p.name.toLowerCase().includes(q) &&
             !p.main_category.toLowerCase().includes(q) &&
@@ -155,7 +156,7 @@ const AllProductsPage = () => {
           </div>
 
           <div className="filter-group">
-            <label>Max Price: ₹{priceFilter.toLocaleString('en-IN')}</label>
+            <label>Max Price: £{priceFilter.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</label>
             <input
               type="range"
               min={0}
@@ -165,8 +166,8 @@ const AllProductsPage = () => {
               className="price-slider"
             />
             <div className="price-range-labels">
-              <span>₹0</span>
-              <span>₹{maxPrice.toLocaleString('en-IN')}</span>
+              <span>£0</span>
+              <span>£{maxPrice.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
 

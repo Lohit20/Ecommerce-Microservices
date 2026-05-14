@@ -8,6 +8,7 @@ import {
 import { useCart } from '../context/CartContext';
 import ProductCard from '../components/ProductCard';
 import { productsService, recommendationService } from '../services/api';
+import { toGBP } from '../utils/priceUtils';
 import './ProductPage.css';
 
 const ProductPage = () => {
@@ -168,10 +169,10 @@ const ProductPage = () => {
             </div>
 
             <div className="product-price-block">
-              <span className="price-current">₹{product.discount_price?.toLocaleString()}</span>
+              <span className="price-current">£{toGBP(product.discount_price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               {discountPct > 0 && (
                 <>
-                  <span className="price-original">₹{product.actual_price?.toLocaleString()}</span>
+                  <span className="price-original">£{toGBP(product.actual_price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   <span className="price-discount">{discountPct}% off</span>
                 </>
               )}
@@ -179,7 +180,7 @@ const ProductPage = () => {
 
             <div className="product-benefits">
               <div className="benefit-item"><FontAwesomeIcon icon={faCheck} /><span>{product.stock > 0 ? `In stock (${product.stock} left)` : 'Out of stock'}</span></div>
-              <div className="benefit-item"><FontAwesomeIcon icon={faTruck} /><span>Free shipping on orders over ₹999</span></div>
+              <div className="benefit-item"><FontAwesomeIcon icon={faTruck} /><span>Free shipping on orders over £50</span></div>
               <div className="benefit-item"><FontAwesomeIcon icon={faShieldAlt} /><span>Authentic product</span></div>
               <div className="benefit-item"><FontAwesomeIcon icon={faUndo} /><span>Easy 30-day returns</span></div>
             </div>
@@ -231,7 +232,7 @@ const ProductPage = () => {
           <img src={product.image} alt={product.name} />
           <div>
             <h3>{product.name}</h3>
-            <span>₹{product.discount_price?.toLocaleString()}</span>
+            <span>£{toGBP(product.discount_price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         </div>
         <button

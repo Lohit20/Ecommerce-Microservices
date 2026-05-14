@@ -4,7 +4,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle, faChevronLeft, faCreditCard, faMoneyBillWave, faTruck } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { toGBP } from '../utils/priceUtils';
 import './CheckoutPage.css';
+
+const fmt = (inr) => `£${toGBP(inr).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const PAYMENT_METHODS = [
   { value: 'credit_card', label: 'Credit Card', icon: faCreditCard, desc: 'Pay securely with your credit card' },
@@ -75,7 +78,7 @@ const CheckoutPage = () => {
               </div>
               <div className="success-row total">
                 <span>Total Paid</span>
-                <span>₹{cart.totalPrice.toLocaleString('en-IN')}</span>
+                <span>{fmt(cart.totalPrice)}</span>
               </div>
             </div>
 
@@ -161,7 +164,7 @@ const CheckoutPage = () => {
               onClick={handlePlaceOrder}
               disabled={loading}
             >
-              {loading ? 'Placing Order…' : `Place Order · ₹${cart.totalPrice.toLocaleString('en-IN')}`}
+              {loading ? 'Placing Order…' : `Place Order · ${fmt(cart.totalPrice)}`}
             </button>
           </div>
 
@@ -179,10 +182,10 @@ const CheckoutPage = () => {
                   )}
                   <div className="summary-item-details">
                     <p className="summary-item-name">{item.name || `Product #${item.product_id}`}</p>
-                    <p className="summary-item-price">₹{item.price?.toLocaleString('en-IN')} × {item.quantity}</p>
+                    <p className="summary-item-price">{fmt(item.price)} × {item.quantity}</p>
                   </div>
                   <span className="summary-item-total">
-                    ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                    {fmt(item.price * item.quantity)}
                   </span>
                 </div>
               ))}
@@ -191,7 +194,7 @@ const CheckoutPage = () => {
             <div className="summary-totals">
               <div className="total-row">
                 <span>Subtotal ({cart.totalItems} items)</span>
-                <span>₹{cart.totalPrice.toLocaleString('en-IN')}</span>
+                <span>{fmt(cart.totalPrice)}</span>
               </div>
               <div className="total-row">
                 <span>Delivery</span>
@@ -199,7 +202,7 @@ const CheckoutPage = () => {
               </div>
               <div className="total-row grand-total">
                 <span>Total</span>
-                <span>₹{cart.totalPrice.toLocaleString('en-IN')}</span>
+                <span>{fmt(cart.totalPrice)}</span>
               </div>
             </div>
           </aside>

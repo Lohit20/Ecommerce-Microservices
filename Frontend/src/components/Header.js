@@ -32,60 +32,68 @@ const Header = () => {
   const isActive = (path) => location.pathname === path ? 'active' : '';
 
   return (
-    <header className="site-header">
-      <div className="header-inner">
-        <div className="logo">
-          <Link to="/">
-            <span className="logo-text">Trend<span className="logo-dot">Vibe</span></span>
-          </Link>
-        </div>
-
-        <nav className={`main-nav ${mobileMenuOpen ? 'active' : ''}`}>
-          <button className="close-menu" onClick={close} aria-label="Close menu">
-            <FontAwesomeIcon icon={faTimes} />
-          </button>
-          <ul className="nav-links">
-            <li><Link to="/" className={isActive('/')} onClick={close}>Home</Link></li>
-            <li><Link to="/shop" className={isActive('/shop')} onClick={close}>Shop All</Link></li>
-            {CATEGORIES.map((c) => (
-              <li key={c.label}>
-                <Link to={c.path} onClick={close}>{c.label}</Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="header-actions">
-          <Link to="/cart" className="icon-btn" aria-label="Cart">
-            <FontAwesomeIcon icon={faShoppingCart} />
-            {cart.totalItems > 0 && (
-              <span className="cart-count">{cart.totalItems}</span>
-            )}
-          </Link>
-
-          {isAuthenticated ? (
-            <>
-              <Link to="/account" className="icon-btn" aria-label="Account">
-                <FontAwesomeIcon icon={faUser} />
-              </Link>
-              <button className="logout-btn" onClick={handleLogout}>Logout</button>
-            </>
-          ) : (
-            <Link to="/login" className="icon-btn" aria-label="Sign in">
-              <FontAwesomeIcon icon={faUser} />
-            </Link>
-          )}
-
-          <button
-            className="mobile-menu-toggle"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            <FontAwesomeIcon icon={mobileMenuOpen ? faTimes : faBars} />
-          </button>
-        </div>
+    <>
+      <div className="announcement-bar">
+        <span>Free UK delivery on orders over £50</span>
+        <span className="ann-dot">·</span>
+        <span>Easy 30-day returns</span>
+        <span className="ann-dot">·</span>
+        <span>Genuine products guaranteed</span>
       </div>
-    </header>
+
+      <header className="site-header">
+        <div className="header-inner">
+          <div className="logo">
+            <Link to="/">
+              <span className="logo-text">Ve<span className="logo-dot">lour</span></span>
+            </Link>
+          </div>
+
+          <nav className={`main-nav ${mobileMenuOpen ? 'active' : ''}`}>
+            <button className="close-menu" onClick={close} aria-label="Close menu">
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+            <ul className="nav-links">
+              <li><Link to="/" className={isActive('/')} onClick={close}>Home</Link></li>
+              <li><Link to="/shop" className={isActive('/shop')} onClick={close}>Shop All</Link></li>
+              {CATEGORIES.map((c) => (
+                <li key={c.label}>
+                  <Link to={c.path} onClick={close}>{c.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="header-actions">
+            <Link to="/cart" className="icon-btn" aria-label="Cart">
+              <FontAwesomeIcon icon={faShoppingCart} />
+              {cart.totalItems > 0 && (
+                <span className="cart-badge-count">{cart.totalItems}</span>
+              )}
+            </Link>
+
+            {isAuthenticated ? (
+              <>
+                <Link to="/account" className="icon-btn" aria-label="Account">
+                  <FontAwesomeIcon icon={faUser} />
+                </Link>
+                <button className="logout-btn" onClick={handleLogout}>Sign out</button>
+              </>
+            ) : (
+              <Link to="/login" className="sign-in-btn">Sign in</Link>
+            )}
+
+            <button
+              className="mobile-menu-toggle"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              <FontAwesomeIcon icon={mobileMenuOpen ? faTimes : faBars} />
+            </button>
+          </div>
+        </div>
+      </header>
+    </>
   );
 };
 

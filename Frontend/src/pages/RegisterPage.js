@@ -72,7 +72,7 @@ const RegisterPage = () => {
                   type="tel" id="phone_number" name="phone_number"
                   value={formData.phone_number} onChange={handleChange}
                   className={errors.phone_number ? 'error' : ''}
-                  placeholder="+91 98765 43210" autoComplete="tel"
+                  placeholder="+44 7700 900123" autoComplete="tel"
                 />
                 {errors.phone_number && <div className="error-message">{errors.phone_number}</div>}
               </div>
@@ -119,7 +119,7 @@ const RegisterPage = () => {
                 type="text" id="address" name="address"
                 value={formData.address} onChange={handleChange}
                 className={errors.address ? 'error' : ''}
-                placeholder="123 Main Street, Bangalore" autoComplete="street-address"
+                placeholder="123 High Street, London, SW1A 1AA" autoComplete="street-address"
               />
               {errors.address && <div className="error-message">{errors.address}</div>}
             </div>

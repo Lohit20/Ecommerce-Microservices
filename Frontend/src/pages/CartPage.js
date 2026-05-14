@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faPlus, faMinus, faShoppingBag } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
+import { formatPrice } from '../utils/priceUtils';
 import './CartPage.css';
 
 const CartPage = () => {
@@ -15,7 +16,7 @@ const CartPage = () => {
     else updateQuantity(productId, next);
   };
 
-  const formatRupees = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
+  const formatRupees = (n) => formatPrice(n);
 
   return (
     <div className="cart-page">
@@ -101,7 +102,7 @@ const CartPage = () => {
               <Link to="/checkout" className="checkout-button">
                 Proceed to Checkout →
               </Link>
-              <p className="secure-note">🔒 Secure checkout</p>
+              <p className="secure-note">Secure checkout</p>
             </div>
           </div>
         )}

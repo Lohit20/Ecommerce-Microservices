@@ -1,34 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faTruck, faRotateLeft, faShieldHalved, faLock,
+  faTv, faHouse, faDumbbell, faBlender, faSpa, faBabyCarriage,
+  faBriefcase, faCar, faShirt, faMasksTheater, faChild,
+  faCartShopping, faPaw, faGem, faHighlighter, faShoePrints,
+  faMagnifyingGlass,
+} from '@fortawesome/free-solid-svg-icons';
 import HeroSlider from '../components/HeroSlider';
 import ProductCard from '../components/ProductCard';
 import { productsService, recommendationService } from '../services/api';
 import './HomePage.css';
 
 const CATEGORIES = [
-  { key: "tv, audio & cameras",     label: 'TV & Audio',      icon: '📺', color: '#eff6ff' },
-  { key: "home & kitchen",          label: 'Home & Kitchen',  icon: '🏠', color: '#f0fdf4' },
-  { key: "sports & fitness",        label: 'Sports',          icon: '🏋️', color: '#fff7ed' },
-  { key: "appliances",              label: 'Appliances',      icon: '🔌', color: '#faf5ff' },
-  { key: "beauty & health",         label: 'Beauty & Health', icon: '💄', color: '#fdf2f8' },
-  { key: "toys & baby products",    label: 'Toys & Baby',     icon: '🧸', color: '#fffbeb' },
-  { key: "bags & luggage",          label: 'Bags & Luggage',  icon: '👜', color: '#f0f9ff' },
-  { key: "car & motorbike",         label: 'Car & Moto',      icon: '🚗', color: '#f1f5f9' },
-  { key: "men's clothing",          label: "Men's Fashion",   icon: '👔', color: '#eff6ff' },
-  { key: "women's clothing",        label: "Women's Fashion", icon: '👗', color: '#fdf2f8' },
-  { key: "kids' fashion",           label: "Kids' Fashion",   icon: '👶', color: '#fffbeb' },
-  { key: "grocery & gourmet foods", label: 'Grocery',         icon: '🛒', color: '#f0fdf4' },
-  { key: "pet supplies",            label: 'Pet Supplies',    icon: '🐾', color: '#fff7ed' },
-  { key: "accessories",             label: 'Accessories',     icon: '💍', color: '#faf5ff' },
-  { key: "women's shoes",           label: "Women's Shoes",   icon: '👠', color: '#fdf2f8' },
-  { key: "men's shoes",             label: "Men's Shoes",     icon: '👟', color: '#eff6ff' },
+  { key: "tv, audio & cameras",     label: 'TV & Audio',      icon: faTv,           color: '#eff6ff' },
+  { key: "home & kitchen",          label: 'Home & Kitchen',  icon: faHouse,        color: '#f0fdf4' },
+  { key: "sports & fitness",        label: 'Sports',          icon: faDumbbell,     color: '#fff7ed' },
+  { key: "appliances",              label: 'Appliances',      icon: faBlender,      color: '#faf5ff' },
+  { key: "beauty & health",         label: 'Beauty & Health', icon: faSpa,          color: '#fdf2f8' },
+  { key: "toys & baby products",    label: 'Toys & Baby',     icon: faBabyCarriage, color: '#fffbeb' },
+  { key: "bags & luggage",          label: 'Bags & Luggage',  icon: faBriefcase,    color: '#f0f9ff' },
+  { key: "car & motorbike",         label: 'Car & Moto',      icon: faCar,          color: '#f1f5f9' },
+  { key: "men's clothing",          label: "Men's Fashion",   icon: faShirt,        color: '#eff6ff' },
+  { key: "women's clothing",        label: "Women's Fashion", icon: faMasksTheater, color: '#fdf2f8' },
+  { key: "kids' fashion",           label: "Kids' Fashion",   icon: faChild,        color: '#fffbeb' },
+  { key: "grocery & gourmet foods", label: 'Grocery',         icon: faCartShopping, color: '#f0fdf4' },
+  { key: "pet supplies",            label: 'Pet Supplies',    icon: faPaw,          color: '#fff7ed' },
+  { key: "accessories",             label: 'Accessories',     icon: faGem,          color: '#faf5ff' },
+  { key: "women's shoes",           label: "Women's Shoes",   icon: faHighlighter,  color: '#fdf2f8' },
+  { key: "men's shoes",             label: "Men's Shoes",     icon: faShoePrints,   color: '#eff6ff' },
 ];
 
 const USP_ITEMS = [
-  { icon: '🚚', title: 'Free Delivery', subtitle: 'On orders above ₹999' },
-  { icon: '↩️', title: 'Easy Returns',  subtitle: '30-day hassle-free returns' },
-  { icon: '✅', title: '100% Authentic', subtitle: 'Genuine products only' },
-  { icon: '🔒', title: 'Secure Payments', subtitle: 'Safe & encrypted checkout' },
+  { icon: faTruck,        title: 'Free Delivery',    subtitle: 'On orders over £50' },
+  { icon: faRotateLeft,   title: 'Easy Returns',     subtitle: '30-day hassle-free returns' },
+  { icon: faShieldHalved, title: '100% Authentic',   subtitle: 'Genuine products only' },
+  { icon: faLock,         title: 'Secure Payments',  subtitle: 'Safe & encrypted checkout' },
 ];
 
 const SkeletonCard = () => (
@@ -118,7 +126,7 @@ const HomePage = () => {
         <div className="usp-inner">
           {USP_ITEMS.map((item) => (
             <div className="usp-item" key={item.title}>
-              <span className="usp-icon">{item.icon}</span>
+              <span className="usp-icon"><FontAwesomeIcon icon={item.icon} /></span>
               <div>
                 <div className="usp-title">{item.title}</div>
                 <div className="usp-sub">{item.subtitle}</div>
@@ -132,11 +140,11 @@ const HomePage = () => {
         {/* Search */}
         <div className="search-section">
           <div className="search-box-wrapper">
-            <span className="search-icon-left">🔍</span>
+            <span className="search-icon-left"><FontAwesomeIcon icon={faMagnifyingGlass} /></span>
             <input
               type="text"
               className="search-input"
-              placeholder="Search with AI — try 'wireless headphones under 2000'…"
+              placeholder="Search products — try 'wireless headphones under £100'…"
               onChange={(e) => handleSearch(e.target.value)}
               defaultValue={searchQuery}
             />
@@ -167,7 +175,7 @@ const HomePage = () => {
               <div className="categories-grid">
                 {CATEGORIES.map((cat) => (
                   <Link to={`/category/${cat.key}`} key={cat.key} className="category-card" style={{ '--cat-bg': cat.color }}>
-                    <span className="category-icon">{cat.icon}</span>
+                    <span className="category-icon"><FontAwesomeIcon icon={cat.icon} /></span>
                     <span className="category-label">{cat.label}</span>
                   </Link>
                 ))}
@@ -181,7 +189,7 @@ const HomePage = () => {
 
             {/* Top Rated */}
             <section className="home-section">
-              <SectionHeader title="⭐ Top Rated" viewAllLink="/shop" />
+              <SectionHeader title="Top Rated" viewAllLink="/shop" />
               <div className="products-grid">
                 {productsLoading
                   ? [1,2,3,4,5].map(i => <SkeletonCard key={i} />)
@@ -193,7 +201,7 @@ const HomePage = () => {
             {/* Best Deals */}
             {bestDeals.length > 0 && (
               <section className="home-section deals-section">
-                <SectionHeader title="🔥 Best Deals" viewAllLink="/shop" />
+                <SectionHeader title="Best Deals" viewAllLink="/shop" />
                 <div className="products-grid">
                   {bestDeals.map((p) => <ProductCard key={p.product_id} product={p} />)}
                 </div>

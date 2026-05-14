@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productsService } from '../services/api';
+import { toGBP } from '../utils/priceUtils';
 import './CategoryPage.css';
 
 const SORT_OPTIONS = [
@@ -30,7 +31,7 @@ const CategoryPage = () => {
         );
         setAllProducts(filtered);
         if (filtered.length > 0) {
-          const top = Math.max(...filtered.map((p) => p.discount_price));
+          const top = toGBP(Math.max(...filtered.map((p) => p.discount_price)));
           setMaxPrice(top);
           setPriceFilter(top);
         }
@@ -44,7 +45,7 @@ const CategoryPage = () => {
   }, [category]);
 
   const filtered = allProducts
-    .filter((p) => p.discount_price <= priceFilter && p.ratings >= minRating)
+    .filter((p) => toGBP(p.discount_price) <= priceFilter && p.ratings >= minRating)
     .sort((a, b) => {
       if (sortBy === 'rating') return b.ratings - a.ratings;
       if (sortBy === 'price-asc') return a.discount_price - b.discount_price;
@@ -75,7 +76,7 @@ const CategoryPage = () => {
           </div>
 
           <div className="filter-group">
-            <label>Max Price: ₹{priceFilter.toLocaleString()}</label>
+            <label>Max Price: £{priceFilter.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</label>
             <input
               type="range"
               min={0}
@@ -85,8 +86,8 @@ const CategoryPage = () => {
               className="price-slider"
             />
             <div className="price-range-labels">
-              <span>₹0</span>
-              <span>₹{maxPrice.toLocaleString()}</span>
+              <span>£0</span>
+              <span>£{maxPrice.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
 

@@ -4,7 +4,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faShoppingBag, faSignOutAlt, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import { cartService } from '../services/api';
+import { toGBP } from '../utils/priceUtils';
 import './AccountPage.css';
+
+const fmt = (inr) => `£${toGBP(inr).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const AccountPage = () => {
   const { user, logout } = useAuth();
@@ -44,7 +47,7 @@ const AccountPage = () => {
 
   const formatDate = (iso) => {
     if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(iso).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   return (
@@ -131,7 +134,7 @@ const AccountPage = () => {
                         </div>
                         <div className="order-info">
                           <div className="order-total">
-                            <span>Total:</span> ₹{Number(order.total_amount).toLocaleString('en-IN')}
+                            <span>Total:</span> {fmt(Number(order.total_amount))}
                           </div>
                           <div className="order-payment">
                             <span className="status-badge">{order.payment_method}</span>
@@ -148,10 +151,10 @@ const AccountPage = () => {
                               <div className="order-product" key={idx}>
                                 <div className="product-info">
                                   <p className="product-name">Product #{item.product_id}</p>
-                                  <p className="product-price">₹{Number(item.price).toLocaleString('en-IN')} × {item.quantity}</p>
+                                  <p className="product-price">{fmt(Number(item.price))} × {item.quantity}</p>
                                 </div>
                                 <div className="product-total">
-                                  ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                                  {fmt(item.price * item.quantity)}
                                 </div>
                               </div>
                             ))}

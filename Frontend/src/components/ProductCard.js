@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import './ProductCard.css';
 import { useCart } from '../context/CartContext';
+import { toGBP } from '../utils/priceUtils';
 
 const StarRating = ({ rating }) => {
   const full = Math.floor(rating);
@@ -64,6 +65,14 @@ const ProductCard = ({ product }) => {
               <span>No Image</span>
             </div>
           )}
+          <div className="cart-hover-overlay">
+            <button
+              className={`add-to-cart-btn ${addedEffect ? 'added' : ''}`}
+              onClick={handleAddToCart}
+            >
+              {addedEffect ? 'Added!' : quantityInCart > 0 ? `In Cart (${quantityInCart})` : 'Add to Cart'}
+            </button>
+          </div>
         </div>
 
         <div className="product-info">
@@ -72,20 +81,13 @@ const ProductCard = ({ product }) => {
           <StarRating rating={product.ratings || 0} />
           <p className="rating-count">{product.no_of_ratings?.toLocaleString()} ratings</p>
           <div className="product-price">
-            <span className="current-price">₹{product.discount_price?.toLocaleString()}</span>
+            <span className="current-price">£{toGBP(product.discount_price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             {discountPct > 0 && (
-              <span className="original-price">₹{product.actual_price?.toLocaleString()}</span>
+              <span className="original-price">£{toGBP(product.actual_price).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             )}
           </div>
         </div>
       </Link>
-
-      <button
-        className={`add-to-cart-btn ${addedEffect ? 'added' : ''}`}
-        onClick={handleAddToCart}
-      >
-        {addedEffect ? '✓ Added!' : quantityInCart > 0 ? `In Cart (${quantityInCart})` : 'Add to Cart'}
-      </button>
     </div>
   );
 };
