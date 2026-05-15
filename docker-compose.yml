@@ -103,10 +103,11 @@ services:
     ports:
       - "8005:8000"
     environment:
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:4b}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyDohRzvBt70hQupVAqjplRYJgAt_EZ8uLU}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
       - PRODUCTS_SERVICE_URL=http://products_service:8000
       - CART_SERVICE_URL=http://cart_service:8000
+      - RECOMMENDATION_SERVICE_URL=http://recommendation_service:8000
     depends_on:
       - products_service
       - cart_service
