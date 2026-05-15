@@ -43,49 +43,41 @@ The backend is composed of five independent FastAPI services. The frontend is a 
 All browser traffic enters through port 3000. The Nginx container serves the React application for page requests and proxies all `/api/*` requests to the appropriate backend service. Backend services communicate with each other over Docker's internal bridge network and are never directly reachable from the browser.
 
 ```text
-                                Browser
-                         http://localhost:3000
-                                      │
-                                      ▼
-
-                 ┌────────────────────────────────┐
-                 │       Nginx (port 3000)        │
-                 │    React SPA + API Gateway     │
-                 └────────────────────────────────┘
-                                      │
-                        Routing by URL path prefix
-                                      │
-
- ┌──────────────┬──────────────┬──────────────┬────────────────────────────┐
- │              │              │              │                            │
- ▼              ▼              ▼              ▼                            ▼
-
-/api/auth/   /api/products/   /api/cart/   /api/search/           /api/assistant/
-
- │              │              │              │                             │
- ▼              ▼              ▼              ▼                             ▼
-
-┌───────────┐ ┌────────────┐ ┌───────────┐ ┌────────────────┐ ┌───────────────┐
-│   Auth    │ │ Products   │ │   Cart    │ │ Search &       │ │   Vera AI     │
-│  Service  │ │  Service   │ │  Service  │ │ Recommendation │ │  Assistant    │
-│   :8004   │ │   :8001    │ │   :8002   │ │   Service      │ │    :8005      │
-└─────┬─────┘ └─────┬──────┘ └─────┬─────┘ │    :8003       │ └─────────────-─┘
-      │             │              │       └────────┬───────┘          │
-      ▼             ▼              ▼                │                  │
-                                                    |                  |
- ┌─────────┐   ┌─────────────┐   ┌─────────┐        │                  │
- │ auth_db │   │ products_db │   │ cart_db │        │                  │
- └─────────┘   └─────────────┘   └─────────┘        │                  │
-                                                    │                  │
-                                      ┌──────────────▼────────────┐    │
-                                      │ Calls Products API        │    │
-                                      │ for recommendation data   │    │
-                                      └───────────────────────────┘    │
-                                                                       │
-                                               ┌───────────────────────▼──────────────────────┐
-                                               │ Calls Gemini API + Products API + Cart API   │
-                                               └──────────────────────────────────────────────┘
-```
+                                    Browser
+                                       │
+                                       ▼
+                         ┌─────────────────────────┐
+                         │   Frontend + Gateway    │
+                         │   Nginx — port 3000     │
+                         └────────────┬────────────┘
+                                      │  routes by path prefix
+         ┌──────────┬─────────────────┼──────────────┬──────────────────┐
+         │          │                 │              │                  │
+         ▼          ▼                 ▼              ▼                  ▼
+   /api/auth/  /api/products/    /api/cart/    /api/search/     /api/assistant/
+         │          │                 │              │                  │
+ ┌───────▼────┐ ┌───▼────────┐ ┌─────▼──────┐ ┌────▼───────────┐ ┌────▼───────────┐
+ │    Auth    │ │  Products  │ │    Cart    │ │  Search &      │ │   Vera AI      │
+ │  Service   │ │  Service   │ │  Service   │ │  Reco. Service │ │   Assistant    │
+ │   :8000    │ │   :8000    │ │   :8000    │ │    :8000       │ │    :8000       │
+ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └────────┬───────┘ └────────┬───────┘
+       │              │              │                  │                  │
+       ▼              ▼              │   HTTP call      │                  │
+  ┌─────────┐   ┌──────────┐         └─────────────────▶│  HTTP call       │
+  │ auth_db │   │products_db│         /get_all_         │◄─────────────────┘
+  └─────────┘   └─────┬────┘    ┌─────products/─────────┘  /product_semantic_search
+                      │          ▼
+                      │    ┌──────────┐     HTTP call      ┌──────────────────┐
+                      │    │  cart_db │◄───────────────────│   Vera AI        │
+                      ▲    └──────────┘  /transactions/    │   Assistant      │
+                      │                  {user_id}         └────────┬─────────┘
+           /update_stock/  HTTP call                                │
+                      │                                             │  HTTP POST
+                      └──────────────────────────────               ▼  /generateContent
+                   Cart → Products (atomic stock updates)  ┌────────────────────┐
+                                                          │  Google Gemini API │
+                                                          │     (external)     │
+                                                          └────────────────────┘
 ```
 
 **Key design decisions:**
