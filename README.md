@@ -1,15 +1,15 @@
 # Velour — UK E-Commerce Microservices Platform
 
-Velour is a full-stack UK online marketplace built with a microservices architecture. It sells products across 16 categories — electronics, fashion, beauty, home, sports, and more — and includes an AI-powered shopping assistant called **Vera**, which uses Google Gemini to help customers find products, track orders, and get support through a floating chat interface.
+Velour is a full-stack UK online marketplace built on a microservices architecture. It sells products across 16 categories — electronics, fashion, beauty, home, sports, and more — and includes **Vera**, an AI-powered shopping assistant built with the **Google Agent Development Kit (ADK)** and **Mistral Large**. Vera helps customers find products, track orders, add items to their basket, and get support through an intelligent floating chat interface.
 
-The backend is composed of five independent FastAPI services. The frontend is a React single-page application served by Nginx, which also acts as an API gateway — routing all browser requests through a single port so no service ports need to be exposed to end users.
+The backend is composed of five independent FastAPI services. The frontend is a React single-page application served by Nginx, which also acts as an API gateway — routing all browser requests through a single port so no service ports need to be exposed to users.
 
 ---
 
 ## Table of Contents
 
 1. [Features](#features)
-2. [Architecture](#architecture)
+2. [Platform Architecture](#platform-architecture)
 3. [Repository Structure](#repository-structure)
 4. [Services Overview](#services-overview)
 5. [Technology Stack](#technology-stack)
@@ -27,65 +27,29 @@ The backend is composed of five independent FastAPI services. The frontend is a 
 
 ## Features
 
-- **Product catalogue** — 685 products seeded from a JSON file into MongoDB on first run, spanning 16 categories
-- **Search** — Free-text search with natural language price constraints (e.g. "wireless headphones under £50"), category alias resolution, and multi-factor relevance scoring
+- **Product catalogue** — 685 products seeded from JSON into MongoDB on first run, spanning 16 categories
+- **Free-text search** — natural language price constraints (e.g. "wireless headphones under £50"), category alias resolution, and multi-factor relevance scoring
 - **Authentication** — JWT-based register and login; tokens expire after 30 minutes
-- **Shopping cart** — Add, remove, and update items; stock is validated and decremented atomically on each cart operation
-- **Checkout and orders** — Place orders with a choice of payment method; view full order history
-- **AI Shopping Assistant (Vera)** — Floating chat widget powered by Google Gemini; shows clickable product cards with images, ratings, and prices; understands product context when browsing a product page; accesses order history when logged in
-- **UK localisation** — All prices in GBP (£) converted from the source INR data at 106:1; `en-GB` date and number formatting throughout
-- **Responsive design** — Works on desktop and mobile; Poppins body font, Playfair Display for headings
+- **Shopping cart** — add, remove, and update items; stock is validated and decremented atomically on each operation
+- **Checkout and orders** — place orders with a choice of payment method; view full order history
+- **Vera AI Shopping Assistant** — agentic chat widget powered by Google ADK + Mistral Large; shows clickable product cards with images, ratings, and prices; multi-agent coordinator routes requests to specialist agents for discovery, orders, cart, and policy
+- **UK localisation** — all prices in GBP (£) converted from source INR data at 106:1; `en-GB` date and number formatting
+- **Responsive design** — works on desktop and mobile; Poppins body font, Playfair Display for headings
 
 ---
 
-## Architecture
+## Platform Architecture
 
-All browser traffic enters through port 3000. The Nginx container serves the React application for page requests and proxies all `/api/*` requests to the appropriate backend service. Backend services communicate with each other over Docker's internal bridge network and are never directly reachable from the browser.
+All browser traffic enters through port 3000. Nginx serves the React application for page requests and proxies all `/api/*` requests to the appropriate backend service. Services communicate over Docker's internal bridge network and are never directly reachable from the browser.
 
-```text
-                                    Browser
-                                       │
-                                       ▼
-                         ┌─────────────────────────┐
-                         │   Frontend + Gateway    │
-                         │   Nginx — port 3000     │
-                         └────────────┬────────────┘
-                                      │  routes by path prefix
-         ┌──────────┬─────────────────┼──────────────┬──────────────────┐
-         │          │                 │              │                  │
-         ▼          ▼                 ▼              ▼                  ▼
-   /api/auth/  /api/products/    /api/cart/    /api/search/     /api/assistant/
-         │          │                 │              │                  │
- ┌───────▼────┐ ┌───▼────────┐ ┌─────▼──────┐ ┌────▼───────────┐ ┌────▼───────────┐
- │    Auth    │ │  Products  │ │    Cart    │ │  Search &      │ │   Vera AI      │
- │  Service   │ │  Service   │ │  Service   │ │  Reco. Service │ │   Assistant    │
- │   :8000    │ │   :8000    │ │   :8000    │ │    :8000       │ │    :8000       │
- └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └────────┬───────┘ └────────┬───────┘
-       │              │              │                  │                  │
-       ▼              ▼              │   HTTP call      │                  │
-  ┌─────────┐   ┌──────────┐         └─────────────────▶│  HTTP call       │
-  │ auth_db │   │products_db│         /get_all_         │◄─────────────────┘
-  └─────────┘   └─────┬────┘    ┌─────products/─────────┘  /product_semantic_search
-                      │          ▼
-                      │    ┌──────────┐     HTTP call      ┌──────────────────┐
-                      │    │  cart_db │◄───────────────────│   Vera AI        │
-                      ▲    └──────────┘  /transactions/    │   Assistant      │
-                      │                  {user_id}         └────────┬─────────┘
-           /update_stock/  HTTP call                                │
-                      │                                             │  HTTP POST
-                      └──────────────────────────────               ▼  /generateContent
-                   Cart → Products (atomic stock updates)  ┌────────────────────┐
-                                                          │  Google Gemini API │
-                                                          │     (external)     │
-                                                          └────────────────────┘
-```
+![Platform Architecture](docs/architecture-platform.svg)
 
 **Key design decisions:**
 
-- **Single entry point.** By routing everything through the Nginx gateway, there are no CORS issues — all API requests come from the same origin (port 3000). Backend services do not need `Access-Control-Allow-Origin` headers.
+- **Single entry point.** Routing everything through the Nginx gateway eliminates CORS issues — all API requests come from the same origin (port 3000). Backend services require no `Access-Control-Allow-Origin` headers.
 - **Database isolation.** Each service owns its own MongoDB database (`auth_db`, `products_db`, `cart_db`). No service queries another service's database directly; data is shared only through HTTP API calls.
-- **Atomic stock updates.** When the Cart Service adds an item, it calls `PATCH /update_stock` on the Products Service. This uses a single MongoDB `find_one_and_update` with the filter `{ stock: { $gte: quantity } }`, ensuring two simultaneous buyers of the last item cannot both succeed — one will receive a 409 Conflict.
-- **JWT ownership checks.** Cart endpoints extract the `user_id` from the JWT token and verify it matches the `user_id` in the request URL, so a logged-in user cannot access or modify another user's cart.
+- **Atomic stock updates.** When the Cart Service adds an item, it calls `PATCH /update_stock` on the Products Service using a single MongoDB `find_one_and_update` with filter `{ stock: { $gte: quantity } }`, ensuring two simultaneous buyers of the last item cannot both succeed — one receives HTTP 409 Conflict.
+- **JWT ownership checks.** Cart endpoints extract `user_id` from the JWT and verify it matches the `user_id` in the request URL, so a logged-in user cannot access or modify another user's cart.
 
 ---
 
@@ -96,9 +60,9 @@ Ecommerce-Microservices/
 │
 ├── ecommerce-auth/                 # Authentication service
 │   ├── app/
-│   │   ├── main.py                 # FastAPI app, CORS configuration, router mount
-│   │   ├── routes/user.py          # POST /register and POST /login endpoints
-│   │   ├── auth.py                 # bcrypt password hashing and JWT creation/decoding
+│   │   ├── main.py                 # FastAPI app, CORS, router mount
+│   │   ├── routes/user.py          # POST /register and POST /login
+│   │   ├── auth.py                 # bcrypt hashing + JWT creation/decoding
 │   │   ├── models.py               # Pydantic models: UserRegister, UserLogin
 │   │   ├── database.py             # MongoDB connection → auth_db
 │   │   └── config.py               # Environment variable loading
@@ -108,73 +72,60 @@ Ecommerce-Microservices/
 ├── products/                       # Product catalogue service
 │   ├── main.py                     # All product CRUD endpoints
 │   ├── models.py                   # Product Pydantic model
-│   ├── dependencies/
-│   │   └── auth.py                 # Reusable JWT verification FastAPI dependency
+│   ├── dependencies/auth.py        # Reusable JWT verification dependency
 │   ├── Dockerfile
 │   └── requirements.txt
 │
 ├── cart/                           # Cart and order service
-│   ├── main.py                     # App factory: mounts routers, sets up DB and CORS
-│   ├── models.py                   # CartItem, Order, PaymentMethod Pydantic models
+│   ├── main.py                     # App factory: mounts routers, DB, CORS
+│   ├── models.py                   # CartItem, Order, PaymentMethod models
 │   ├── routers/
 │   │   ├── cart.py                 # Cart management endpoints
 │   │   └── orders.py               # Checkout and order history endpoints
-│   ├── dependencies/
-│   │   └── auth.py                 # JWT verification dependency
+│   ├── dependencies/auth.py        # JWT verification dependency
 │   ├── Dockerfile
 │   └── requirements.txt
 │
 ├── recommendation_and_search_system/
-│   ├── main.py                     # Search scoring engine and recommendations logic
+│   ├── main.py                     # Search scoring engine + recommendations
 │   ├── models.py                   # Product Pydantic model
 │   ├── Dockerfile
 │   └── requirements.txt
 │
-├── ai_assistant/                   # Vera AI shopping assistant
-│   ├── main.py                     # Gemini API integration, chat endpoint, product context
+├── ai_assistant/                   # Vera AI shopping assistant (Google ADK)
+│   ├── main.py                     # FastAPI app, ADK Runner, /chat endpoint
+│   ├── agents.py                   # Coordinator + 4 specialist agents
+│   ├── tools.py                    # 7 ADK tool functions
+│   ├── services.py                 # HTTP calls to Velour services + price helpers
+│   ├── model.py                    # Mistral model factory (LiteLLM)
 │   ├── Dockerfile
 │   └── requirements.txt
 │
 ├── mongo-init/                     # One-time database seeding
-│   ├── seed.py                     # Reads products.json and inserts into products_db
+│   ├── seed.py                     # Reads products.json, inserts into products_db
 │   ├── products.json               # 685 product records (source data in INR)
 │   └── Dockerfile
 │
 ├── Frontend/                       # React single-page application
-│   ├── public/
-│   │   └── index.html              # HTML shell, Google Fonts, page title
 │   ├── src/
-│   │   ├── App.js                  # Root component, React Router setup, context providers
-│   │   ├── App.css                 # Global CSS custom properties (design tokens)
-│   │   ├── pages/                  # One component per route
-│   │   │   ├── HomePage.js         # Hero slider, categories, search, recommendations
-│   │   │   ├── AllProductsPage.js  # Full product listing with filters
-│   │   │   ├── ProductPage.js      # Product detail with quantity selector
-│   │   │   ├── CategoryPage.js     # Category listing with price slider
-│   │   │   ├── CartPage.js         # Cart review and totals
-│   │   │   ├── CheckoutPage.js     # Payment selection and confirmation
-│   │   │   ├── AccountPage.js      # Order history and account info
-│   │   │   ├── LoginPage.js        # Login form
-│   │   │   └── RegisterPage.js     # Registration form
-│   │   ├── components/             # Reusable UI components
-│   │   │   ├── Header.js/.css      # Navigation, cart icon, sign-in button
-│   │   │   ├── Footer.js/.css      # Links, contact info, copyright
-│   │   │   ├── ProductCard.js/.css # Product thumbnail with hover cart button
-│   │   │   ├── HeroSlider.js/.css  # Auto-playing homepage hero banner
-│   │   │   ├── ChatWidget.js/.css  # Vera AI floating chat bubble and window
-│   │   │   └── ScrollToTop.js      # Scrolls to top on route change
+│   │   ├── App.js                  # Root component, React Router, context providers
+│   │   ├── pages/                  # One component per route (9 pages)
+│   │   ├── components/             # Header, Footer, ProductCard, ChatWidget, etc.
 │   │   ├── context/
 │   │   │   ├── AuthContext.js      # Global auth state (user, token, login, logout)
 │   │   │   └── CartContext.js      # Global cart state with localStorage persistence
-│   │   ├── services/
-│   │   │   └── api.js              # Axios instances using relative /api/* paths
-│   │   └── utils/
-│   │       └── priceUtils.js       # toGBP() and formatPrice() helpers
+│   │   ├── services/api.js         # Axios instances using relative /api/* paths
+│   │   └── utils/priceUtils.js     # toGBP() and formatPrice() helpers
 │   ├── nginx.conf                  # API gateway proxy rules + SPA fallback
-│   ├── Dockerfile                  # Multi-stage build: Node 18 → Nginx alpine
+│   ├── Dockerfile                  # Multi-stage: Node 18 build → Nginx alpine
 │   └── package.json
 │
-├── docker-compose.yml              # Orchestrates all 7 containers
+├── docs/                           # Architecture diagrams
+│   ├── architecture-platform.svg   # Platform overview diagram
+│   ├── architecture-vera.svg       # Vera multi-agent architecture diagram
+│   └── vera-cart-flow.svg          # Cart propose/confirm flow diagram
+│
+├── docker-compose.yml              # Orchestrates all containers
 └── README.md
 ```
 
@@ -186,9 +137,9 @@ Ecommerce-Microservices/
 
 **Internal port:** 8000 | **Gateway path:** `/api/auth/`
 
-Handles user registration and login. Passwords are hashed with **bcrypt** before being stored — plain-text passwords are never persisted. On successful register or login, the service issues a signed JWT token containing the user's email and MongoDB `_id`. This token is used by the frontend for all subsequent authenticated requests.
+Handles user registration and login. Passwords are hashed with **bcrypt** before being stored — plain-text passwords are never persisted. On successful register or login, the service issues a signed JWT containing the user's email and MongoDB `_id`. This token is used for all subsequent authenticated requests.
 
-Tokens are signed with the **HS256** algorithm using a secret key configured via `JWT_SECRET_KEY` and expire after 30 minutes (configurable via `ACCESS_TOKEN_EXPIRE_MINUTES`).
+Tokens are signed with **HS256** using `JWT_SECRET_KEY` and expire after 30 minutes.
 
 ---
 
@@ -196,11 +147,11 @@ Tokens are signed with the **HS256** algorithm using a secret key configured via
 
 **Internal port:** 8000 | **Gateway path:** `/api/products/`
 
-Manages the full product catalogue. On first startup, 685 products are inserted into `products_db` by the seed container. The Products Service then serves and manages these records.
+Manages the full product catalogue. On first startup, 685 products are inserted into `products_db` by the seed container.
 
 - **Read endpoints** (`GET`) are public — no authentication required.
 - **Write endpoints** (`PUT`, `POST`, `DELETE`) require a valid JWT.
-- **Stock updates** (`PATCH /update_stock`) are called internally by the Cart Service. The update is atomic: MongoDB's `find_one_and_update` with a conditional filter ensures stock never goes below zero, even under concurrent requests. If stock is insufficient, the endpoint returns **HTTP 409 Conflict**.
+- **Stock updates** (`PATCH /update_stock`) are called internally by the Cart Service. The update is atomic: MongoDB's `find_one_and_update` with a conditional filter ensures stock never goes below zero under concurrent requests. If stock is insufficient the endpoint returns **HTTP 409 Conflict**.
 
 ---
 
@@ -208,41 +159,35 @@ Manages the full product catalogue. On first startup, 685 products are inserted 
 
 **Internal port:** 8000 | **Gateway path:** `/api/cart/`
 
-Manages shopping carts and completed orders. The service is split into two routers to keep the two concerns separate:
+Manages shopping carts and completed orders, split into two routers:
 
-- **`routers/cart.py`** handles the temporary cart state: adding items, removing items, fetching the cart, and clearing it.
-- **`routers/orders.py`** handles permanent records: placing an order (checkout) and fetching order history (transactions).
+- **`routers/cart.py`** — cart state: add, remove, fetch, and clear items.
+- **`routers/orders.py`** — permanent records: place orders, fetch order history.
 
-**All cart endpoints require a valid JWT.** The service extracts `user_id` from the token and checks it matches the `user_id` in the URL — a user cannot read or modify another user's cart.
+All endpoints require a valid JWT. The service extracts `user_id` from the token and verifies it matches the URL parameter — a user cannot access another user's cart.
 
-When an item is added to the cart, the service validates that stock is available and calls `PATCH /update_stock` on the Products Service to atomically decrement it. If an item is removed, the stock is restored.
+When an item is added, the service validates stock and calls `PATCH /update_stock` on the Products Service to atomically decrement it. Removing an item restores the stock.
 
 ---
 
-### 4. Recommendation and Search Service
+### 4. Search and Recommendations Service
 
 **Internal port:** 8000 | **Gateway path:** `/api/search/`
 
 Provides two public endpoints:
 
-- **Product search** — Accepts a free-text query and returns the most relevant products using a local multi-factor scoring algorithm (described in detail in the [Search System](#search-system) section).
-- **Category recommendations** — Fetches all in-stock products from the Products Service, groups them by `main_category`, and returns the top-rated products per category. This powers the recommendation strips on the homepage.
+- **Product search** — accepts a free-text query and scores every product using a local multi-factor algorithm (see [Search System](#search-system)).
+- **Category recommendations** — fetches all in-stock products, groups by `main_category`, and returns top-rated products per category for the homepage.
 
-This service has **no direct database connection**. All product data is retrieved via the Products Service API, keeping data access properly encapsulated.
+This service has **no direct database connection** — all product data is retrieved via the Products Service API.
 
 ---
 
-### 5. AI Assistant Service (Vera)
+### 5. AI Assistant Service — Vera
 
 **Internal port:** 8000 | **Gateway path:** `/api/assistant/`
 
-Powers the floating chat widget on every page of the website. When a user sends a message:
-
-1. The service checks whether the query is product-related. If so, it calls the Search Service to fetch relevant products from the catalogue.
-2. If the query is order-related and the user is logged in, it fetches the user's order history from the Cart Service.
-3. If the user is on a product page, the frontend sends that product's data as context.
-4. All collected context is added to the system prompt and sent to the **Google Gemini API**, which generates a structured JSON response containing a conversational reply, optional clickable choice buttons, and optionally a list of product IDs to display as visual cards.
-5. The service matches those product IDs back to the full product records and returns rich product data (image, price, rating, discount) to the frontend for rendering.
+Powers the floating chat widget on every page. Built with **Google ADK 2.2** and **Mistral Large** via LiteLLM. See the full [AI Assistant — Vera](#ai-assistant--vera) section for architecture details.
 
 ---
 
@@ -252,7 +197,7 @@ Powers the floating chat widget on every page of the website. When a user sends 
 |-------|-----------|
 | Frontend framework | React 18, React Router v6 |
 | Frontend HTTP | Axios (relative `/api/*` paths — no hardcoded ports) |
-| UI icons | FontAwesome 6 (solid set) |
+| UI icons | FontAwesome 6 |
 | Fonts | Poppins (body), Playfair Display (headings) — Google Fonts |
 | Backend framework | FastAPI 0.115, Python 3.11, Uvicorn |
 | Password hashing | bcrypt via passlib |
@@ -260,7 +205,8 @@ Powers the floating chat widget on every page of the website. When a user sends 
 | Database | MongoDB 7 |
 | Async DB driver | Motor 3.7 |
 | Inter-service HTTP | httpx 0.28 (async) |
-| AI assistant | Google Gemini 2.0 Flash (configurable model) via REST API |
+| AI assistant framework | Google Agent Development Kit (ADK) 2.2 |
+| AI assistant model | Mistral Large (`mistral-large-latest`) via LiteLLM |
 | Search engine | Custom local scoring (primary); Hugging Face sentence-transformers (optional fallback) |
 | Web server / gateway | Nginx alpine |
 | Containerisation | Docker, Docker Compose |
@@ -269,16 +215,16 @@ Powers the floating chat widget on every page of the website. When a user sends 
 
 ## Prerequisites
 
-Before running the project, make sure the following are installed on your machine:
+Before running the project, make sure the following are installed:
 
 - **Docker** — [Install Docker](https://docs.docker.com/get-docker/)
 - **Docker Compose** — included with Docker Desktop on Mac and Windows; install separately on Linux
 
-You do not need Python, Node.js, or MongoDB installed locally. Everything runs inside Docker containers.
+You do not need Python, Node.js, or MongoDB installed locally — everything runs inside Docker containers.
 
 You will also need:
 
-- A **Google Gemini API key** for the AI assistant. Get one for free at [aistudio.google.com](https://aistudio.google.com) — click **Get API key**. The free tier allows approximately 1,500 requests per day on `gemini-2.0-flash`, which is sufficient for normal use.
+- A **Mistral API key** for the Vera AI assistant. Sign up at [console.mistral.ai](https://console.mistral.ai) and create an API key. `mistral-large-latest` is a paid, per-token model with no daily request cap.
 
 ---
 
@@ -297,18 +243,18 @@ Create a file named `.env` in the root directory (the same folder as `docker-com
 
 ```env
 # Secret key used to sign and verify JWT tokens.
-# Replace this with any long random string — keep it secret.
+# Replace with any long random string — keep it secret.
 JWT_SECRET_KEY=replace_this_with_a_long_random_secret_string
 
-# Your Google Gemini API key for the Vera AI assistant.
-# Get a free key at: https://aistudio.google.com
-GEMINI_API_KEY=your_gemini_api_key_here
+# Your Mistral API key for the Vera AI assistant.
+# Get one at: https://console.mistral.ai
+MISTRAL_API_KEY=your_mistral_api_key_here
 
-# (Optional) Override the Gemini model. Default is gemini-2.0-flash.
-# GEMINI_MODEL=gemini-2.0-flash
+# (Optional) Override the Mistral model. Default is mistral-large-latest.
+# MISTRAL_MODEL_TAG=mistral-large-latest
 ```
 
-> **Security note:** Never commit your `.env` file to version control. The `.gitignore` should exclude it. The `JWT_SECRET_KEY` default in `docker-compose.yml` is intentionally weak — always override it via the `.env` file.
+> **Security note:** Never commit your `.env` file to version control. The `JWT_SECRET_KEY` default in `docker-compose.yml` is intentionally weak — always override it via `.env`.
 
 ### Step 3 — Build and start all services
 
@@ -316,9 +262,9 @@ GEMINI_API_KEY=your_gemini_api_key_here
 docker-compose up --build
 ```
 
-The first run will take approximately 2–3 minutes as Docker builds all service images and seeds the database. You will see log output from each container. When you see `frontend` logs from Nginx, everything is ready.
+The first run takes approximately 2–3 minutes as Docker builds all images and seeds the database. When you see Nginx logs from the `frontend` container, everything is ready.
 
-On subsequent runs (when images are already built and the database is already seeded), startup takes around 10–15 seconds:
+On subsequent runs (images already built, database already seeded):
 
 ```bash
 docker-compose up
@@ -326,36 +272,34 @@ docker-compose up
 
 ### Step 4 — Open the application
 
-Visit [http://localhost:3000](http://localhost:3000) in your browser.
+Visit **[http://localhost:3000](http://localhost:3000)** in your browser.
 
-That is the only URL you need. Everything — the website, the APIs, and the AI assistant — is accessible through port 3000.
+That is the only URL you need. The website, APIs, and AI assistant are all accessible through port 3000.
 
 ---
 
 ### Startup Order
 
-Docker Compose starts the containers in a specific order to ensure dependencies are ready:
+Docker Compose starts containers in a specific order:
 
-1. **MongoDB** starts first and waits until its health check passes.
-2. **Seed container** runs once to insert 685 products into `products_db`, then exits. If the data already exists, it skips the insert and exits cleanly.
-3. **Products Service** starts after the seed completes successfully.
-4. **Auth Service** starts after MongoDB is healthy.
-5. **Cart Service** starts after the Products Service is available.
-6. **Recommendation Service** starts after the Products Service is available.
-7. **AI Assistant Service** starts after the Products and Cart services are available.
-8. **Frontend** starts last, after all backend services are running.
+1. **MongoDB** — starts first; containers wait until its health check passes
+2. **Seed container** — inserts 685 products into `products_db` then exits; skips if data already exists
+3. **Products Service** — starts after seed completes
+4. **Auth Service** — starts after MongoDB is healthy
+5. **Cart Service** — starts after Products Service
+6. **Recommendation Service** — starts after Products Service
+7. **AI Assistant Service** — starts after Products and Cart services
+8. **Frontend** — starts last, after all backend services
 
 ---
 
 ### Stopping the application
 
-To stop all containers:
 ```bash
+# Stop all containers
 docker-compose down
-```
 
-To stop and remove all data (wipes the database — useful for a fresh start):
-```bash
+# Stop and wipe all data (fresh start)
 docker-compose down -v
 ```
 
@@ -363,40 +307,39 @@ docker-compose down -v
 
 ## Environment Variables
 
-The following environment variables are read by the services. They can be set in the `.env` file in the project root, and Docker Compose will pass them through automatically.
-
-| Variable | Used By | Description | Default (docker-compose) |
-|----------|---------|-------------|--------------------------|
-| `JWT_SECRET_KEY` | Auth, Products, Cart | Secret key for signing and verifying JWT tokens. Must be the same value across all services. | `supersecretkey_changeme_in_production` |
+| Variable | Used By | Description | Default |
+|----------|---------|-------------|---------|
+| `JWT_SECRET_KEY` | Auth, Products, Cart | Secret key for JWT signing — must match across all services | `supersecretkey_changeme_in_production` |
 | `ALGORITHM` | Auth, Products, Cart | JWT signing algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Auth | How long tokens remain valid | `30` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Auth | Token validity duration | `30` |
 | `MONGO_URI` | Auth, Products, Cart | MongoDB connection string | `mongodb://mongodb:27017` |
+| `MISTRAL_API_KEY` | Assistant | Mistral API key for Vera | *(must be set)* |
+| `MISTRAL_MODEL_TAG` | Assistant | Mistral model to use | `mistral-large-latest` |
 | `PRODUCTS_SERVICE_URL` | Cart, Recommendation, Assistant | Internal URL of the Products Service | `http://products_service:8000` |
 | `CART_SERVICE_URL` | Assistant | Internal URL of the Cart Service | `http://cart_service:8000` |
-| `RECOMMENDATION_SERVICE_URL` | Assistant | Internal URL of the Recommendation Service | `http://recommendation_service:8000` |
-| `GEMINI_API_KEY` | Assistant | Google Gemini API key for Vera | *(must be set)* |
-| `GEMINI_MODEL` | Assistant | Gemini model to use | `gemini-2.0-flash` |
-| `HF_API_TOKEN` | Recommendation | Hugging Face token for optional semantic search fallback | *(empty — not required)* |
+| `RECOMMENDATION_SERVICE_URL` | Assistant | Internal URL of the Search Service | `http://recommendation_service:8000` |
+| `INR_TO_GBP_RATE` | Assistant | INR to GBP conversion rate | `106` |
+| `TOOL_HTTP_TIMEOUT` | Assistant | Timeout in seconds for service HTTP calls | `12` |
+| `HF_API_TOKEN` | Recommendation | Hugging Face token for optional semantic fallback | *(empty — not required)* |
 
 ---
 
 ## API Reference
 
-All API endpoints are accessed through the Nginx gateway at `http://localhost:3000`. The gateway strips the `/api/<service>/` path prefix before forwarding the request to the backend service.
+All endpoints are accessed through the Nginx gateway at `http://localhost:3000`. The gateway strips the `/api/<service>/` prefix before forwarding to the backend.
 
-Individual service ports (8001–8005) are also exposed for development and debugging, but are not needed during normal use.
+Individual service ports (8001–8005) are also exposed for development.
 
 ---
 
 ### Authentication — `/api/auth/`
 
-#### Register a new user
+#### Register
 
 ```
 POST /api/auth/auth/register
 ```
 
-**Request body:**
 ```json
 {
   "username": "jane_smith",
@@ -407,301 +350,100 @@ POST /api/auth/auth/register
 }
 ```
 
-**Response (200 OK):**
-```json
-{
-  "token": "<jwt_token>",
-  "token_type": "bearer",
-  "user": {
-    "id": "64f1c2d3e4b5f6a7b8c9d0e1",
-    "username": "jane_smith",
-    "email": "jane@example.co.uk",
-    "address": "42 Baker Street, London, W1U 7BW",
-    "phone_number": "+44 7700 900123"
-  }
-}
-```
-
-**Error responses:**
-- `400 Bad Request` — Email address is already registered.
+**Response (200):** `{ "token": "...", "token_type": "bearer", "user": { ... } }`  
+**Error:** `400` — email already registered
 
 ---
 
-#### Log in
+#### Login
 
 ```
 POST /api/auth/auth/login
 ```
 
-**Request body:**
 ```json
-{
-  "email": "jane@example.co.uk",
-  "password": "yourpassword"
-}
+{ "email": "jane@example.co.uk", "password": "yourpassword" }
 ```
 
-**Response (200 OK):** Same shape as the register response above.
-
-**Error responses:**
-- `401 Unauthorized` — Incorrect email or password.
+**Response (200):** Same shape as register.  
+**Error:** `401` — incorrect email or password
 
 ---
 
 ### Products — `/api/products/`
 
-#### Get all products
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/get_all_products/` | No | All 685 products |
+| `GET` | `/get_product/{product_id}` | No | Single product by ID |
+| `PATCH` | `/update_stock/{product_id}` | No | Atomic stock update (internal use by Cart Service) |
+| `PUT` | `/update_product/{product_id}` | JWT | Update product fields |
+| `POST` | `/insert_new_product/` | JWT | Add a new product |
+| `DELETE` | `/delete_product/{product_id}` | JWT | Delete a product |
 
-```
-GET /api/products/get_all_products/
-```
-
-Returns all 685 products as a JSON array. No authentication required.
-
----
-
-#### Get a single product
-
-```
-GET /api/products/get_product/{product_id}
-```
-
-Returns the full product object for the given numeric `product_id`. No authentication required.
-
-**Error responses:**
-- `404 Not Found` — No product with that ID exists.
-
----
-
-#### Update stock quantity
-
-```
-PATCH /api/products/update_stock/{product_id}
-```
-
-Called internally by the Cart Service. Uses an atomic MongoDB operation to prevent stock going below zero.
-
-**Request body:**
-```json
-{ "quantity": -2 }
-```
-
-Use negative values to decrement stock (when adding to cart) and positive values to increment (when removing from cart).
-
-**Error responses:**
-- `409 Conflict` — Insufficient stock for the requested decrement.
-- `404 Not Found` — Product does not exist.
-
----
-
-#### Update product details *(requires authentication)*
-
-```
-PUT /api/products/update_product/{product_id}
-```
-
-**Request headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-**Request body:** Any subset of product fields to update (e.g. `{ "actual_price": 2500, "stock": 100 }`).
-
----
-
-#### Add a new product *(requires authentication)*
-
-```
-POST /api/products/insert_new_product/
-```
-
-**Request headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-**Request body:** Full product object matching the product schema.
-
----
-
-#### Delete a product *(requires authentication)*
-
-```
-DELETE /api/products/delete_product/{product_id}
-```
-
-**Request headers:**
-```
-Authorization: Bearer <jwt_token>
-```
+**Stock update body:** `{ "quantity": -1 }` — negative to decrement, positive to restore.  
+**Error:** `409 Conflict` if insufficient stock.
 
 ---
 
 ### Cart and Orders — `/api/cart/`
 
-All cart and order endpoints require a valid JWT. The `user_id` in the JWT payload must match the `{user_id}` in the URL path, otherwise the request is rejected with 403 Forbidden.
+All endpoints require `Authorization: Bearer <token>`. The `user_id` in the JWT must match the `{user_id}` in the URL path.
 
-**Required header for all cart endpoints:**
-```
-Authorization: Bearer <jwt_token>
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/cart/{user_id}` | Get current cart contents |
+| `POST` | `/cart/{user_id}/add` | Add items to cart |
+| `POST` | `/cart/{user_id}/remove/{product_id}` | Remove an item from cart |
+| `POST` | `/cart/{user_id}/clear` | Clear the entire cart |
+| `POST` | `/checkout/{user_id}` | Place an order |
+| `GET` | `/transactions/{user_id}` | Get order history |
 
----
-
-#### Get the user's cart
-
-```
-GET /api/cart/cart/{user_id}
-```
-
-Returns the current cart contents, including product details and quantities.
-
----
-
-#### Add items to the cart
-
-```
-POST /api/cart/cart/{user_id}/add
-```
-
-**Request body** (array of items):
-```json
-[
-  { "product_id": 83919804, "quantity": 1 },
-  { "product_id": 46354382, "quantity": 2 }
-]
-```
-
-The service validates stock availability and decrements it atomically. Returns an error if any item has insufficient stock.
-
----
-
-#### Remove an item from the cart
-
-```
-POST /api/cart/cart/{user_id}/remove/{product_id}
-```
-
-Removes the specified product from the cart and restores the stock quantity.
-
----
-
-#### Clear the entire cart
-
-```
-POST /api/cart/cart/{user_id}/clear
-```
-
-Removes all items from the cart and restores stock for each item.
-
----
-
-#### Place an order (checkout)
-
-```
-POST /api/cart/checkout/{user_id}
-```
-
-**Request body** (the payment method as a plain string):
-```json
-"credit_card"
-```
-
-Available payment methods: `credit_card`, `paypal`, `cod`
-
-Creates an order record in `cart_db.transactions`, then clears the cart. Returns the order summary.
-
----
-
-#### Get order history
-
-```
-GET /api/cart/transactions/{user_id}
-```
-
-Returns an array of all past orders for the user, ordered by date.
+**Add items body:** `[{ "product_id": 83919804, "quantity": 1 }]`  
+**Checkout body:** `"credit_card"` — available methods: `credit_card`, `paypal`, `cod`
 
 ---
 
 ### Search and Recommendations — `/api/search/`
 
-These endpoints are public and require no authentication.
-
----
-
-#### Search products
-
-```
-GET /api/search/product_semantic_search?query=<search_term>&top_k=<number>
-```
-
-**Query parameters:**
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `query` | Yes | — | Free-text search query |
-| `top_k` | No | `24` | Maximum number of results to return |
-
-The search engine supports natural language queries. See the [Search System](#search-system) section for a full explanation of how scoring works.
-
-**Example queries:**
-```
-/api/search/product_semantic_search?query=wireless headphones under £50
-/api/search/product_semantic_search?query=yoga mat for beginners&top_k=10
-/api/search/product_semantic_search?query=womens running shoes
-```
-
----
-
-#### Get homepage recommendations
-
-```
-GET /api/search/recommendations?top_n=<number>
-```
-
-Returns the top-rated in-stock products for each category, grouped by `main_category`. Used by the homepage to populate the recommendation strips.
-
-**Query parameters:**
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `top_n` | No | `5` | Number of products to return per category |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/product_semantic_search?query=&top_k=` | Search products |
+| `GET` | `/recommendations?top_n=` | Top-rated products per category |
 
 ---
 
 ### AI Assistant — `/api/assistant/`
 
-#### Check assistant health
+#### Health check
 
 ```
 GET /api/assistant/health
 ```
 
-Returns the assistant's status and whether it can reach the Gemini API.
-
-**Response:**
 ```json
 {
   "status": "ok",
-  "provider": "gemini",
-  "model": "gemini-2.0-flash",
-  "api_key_configured": true
+  "provider": "mistral",
+  "model": "mistral-large-latest",
+  "api_key_configured": true,
+  "mode": "adk-coordinator"
 }
 ```
 
----
-
-#### Send a chat message
+#### Chat
 
 ```
 POST /api/assistant/chat
 ```
 
-**Request body:**
+**Request:**
 ```json
 {
   "message": "I want headphones under £50",
   "history": [
     { "role": "user", "content": "Hi" },
-    { "role": "assistant", "content": "Hello! How can I help you today?" }
+    { "role": "assistant", "content": "Hello! How can I help?" }
   ],
   "product_context": null,
   "user_id": null,
@@ -709,23 +451,15 @@ POST /api/assistant/chat
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `message` | string | The user's current message |
-| `history` | array | Previous conversation turns (last 6 are sent to Gemini) |
-| `product_context` | object or null | The full product object if the user is on a product page |
-| `user_id` | string or null | The logged-in user's ID (for fetching order history) |
-| `auth_token` | string or null | The user's JWT token (for authenticated order lookups) |
-
 **Response:**
 ```json
 {
   "response": "Here are some great picks for you!",
-  "options": ["Wireless", "Wired", "True wireless"],
+  "options": ["Wireless", "Wired", "Noise-cancelling"],
   "products": [
     {
       "product_id": 46354382,
-      "name": "boAt Rockerz 330 Bluetooth Wireless in Ear Earphones",
+      "name": "boAt Rockerz 330 Bluetooth Wireless Earphones",
       "image": "https://...",
       "sub_category": "Headphones",
       "price": 10.37,
@@ -739,69 +473,115 @@ POST /api/assistant/chat
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `response` | Vera's conversational reply text |
-| `options` | Clickable choice buttons (empty array if no clarifying question) |
-| `products` | Product cards to display below the reply (empty array if no products recommended) |
-
 ---
 
 ## Frontend Pages
 
 | Route | Page | Login Required |
 |-------|------|----------------|
-| `/` | **Home** — hero banner, USP strip (free delivery, returns, authenticity), category grid, live search with results, Top Rated and Best Deals sections, per-category recommendation strips | No |
-| `/shop` | **All Products** — complete catalogue with filters for category, price range, and minimum rating; sort by price or rating | No |
-| `/product/:id` | **Product Detail** — image gallery, full description, star rating, stock level, quantity selector, Add to Cart button, related products | No |
-| `/category/:name` | **Category Page** — products filtered to a single category, with price range slider and sort controls | No |
-| `/cart` | **Cart** — list of items with quantity controls, subtotal, and proceed to checkout button | No |
-| `/checkout` | **Checkout** — select payment method, review order summary, place order | **Yes** |
-| `/account` | **Account** — view account details and full order history | **Yes** |
-| `/login` | **Login** — email and password sign-in form | No |
-| `/register` | **Register** — create a new account | No |
+| `/` | **Home** — hero banner, category grid, live search, Top Rated and Best Deals strips | No |
+| `/shop` | **All Products** — full catalogue with category, price, and rating filters | No |
+| `/product/:id` | **Product Detail** — image, description, rating, stock, quantity selector, Add to Cart | No |
+| `/category/:name` | **Category Page** — products for one category with price slider | No |
+| `/cart` | **Cart** — item list, quantity controls, subtotal, proceed to checkout | No |
+| `/checkout` | **Checkout** — payment selection, order summary, place order | Yes |
+| `/account` | **Account** — order history, account details | Yes |
+| `/login` | **Login** | No |
+| `/register` | **Register** | No |
 
-Pages marked as login required redirect to `/login` if the user is not authenticated. After login, the user is redirected back to their original destination.
+Login-required pages redirect to `/login` and return to the original destination after sign-in.
 
 ---
 
 ## AI Assistant — Vera
 
-Vera is the AI shopping assistant integrated into every page as a floating chat bubble (bottom-right corner). It is powered by Google Gemini and is designed to behave like a knowledgeable sales assistant.
+Vera is the AI shopping assistant integrated into every page as a floating chat bubble (bottom-right corner). It is built on the **Google Agent Development Kit (ADK)** with **Mistral Large** as the language model, accessed via LiteLLM.
 
-### How to use
+### Agentic Architecture
 
-1. Click the blue chat bubble in the bottom-right corner of any page.
-2. Type a message or tap one of the suggestion buttons that appear in the opening greeting.
-3. When Vera asks a clarifying question (e.g. "Are you looking for men's or women's clothing?"), clickable option buttons appear below her message — tap one to answer without typing.
-4. Product recommendations appear as visual cards with images, ratings, prices, and direct links to the product page.
+Unlike a simple chat API call, Vera is a **multi-agent system**. A top-level Coordinator agent reads every message and routes it to the appropriate specialist. Each specialist is its own LLM-powered agent with a narrow responsibility and a focused set of tools.
 
-### What Vera can do
+![Vera Agent Architecture](docs/architecture-vera.svg)
 
-| Query type | Example | What happens |
-|-----------|---------|--------------|
-| Product search | "I want headphones under £50" | Searches the catalogue and shows matching product cards |
-| Clarifying questions | "I want a shirt" | Asks follow-up questions via option buttons before recommending |
-| Product Q&A | Asked on a product page | Uses that product's data to answer questions about it |
-| Order history | "Where is my order?" (logged in) | Looks up and displays your recent orders |
-| Policy questions | "What is your return policy?" | Answers from Velour's policy data in the system prompt |
-| General support | "How do I contact you?" | Provides support email and phone number |
+#### The Coordinator — `vera_coordinator`
 
-### Gemini API quota
+The single entry point for all reasoning. It reads the shopper's message, decides which specialist handles it, and delegates via ADK's `transfer_to_agent` mechanism. It handles greetings itself; everything else is routed. It never calls Velour services directly.
 
-The Vera assistant uses the Google Gemini API. The free tier allows approximately **1,500 requests per day** on `gemini-2.0-flash`. If the quota is exhausted, Vera will respond with "I'm a little busy right now — please try again in a moment." The quota resets at midnight UTC.
+#### The Specialist Agents
 
-To remove quota limits, add billing to your Google AI Studio project at [aistudio.google.com](https://aistudio.google.com).
+| Agent | Responsibility | Tools |
+|-------|---------------|-------|
+| **Discovery** | Search the catalogue, browse categories, compare products, filter by budget, give recommendations | `search_catalogue`, `lookup_product`, `set_quick_replies` |
+| **Order** | Fetch and summarise the shopper's past orders and order status | `get_my_orders`, `lookup_product`, `set_quick_replies` |
+| **Cart** | View the basket, propose adding an item, confirm additions, handle checkout | `view_cart`, `propose_add_to_cart`, `confirm_add_to_cart`, `set_quick_replies` |
+| **Advisor** | Answer policy, delivery, returns, and support questions; answer questions about the current product page | `lookup_product`, `set_quick_replies` |
+
+#### The Session-State Bridge
+
+ADK agents communicate in natural language, but the Velour frontend needs structured data — product cards, quick-reply buttons. The solution is a **session state bridge**: tools write structured results into a shared dictionary as a side effect of their work.
+
+| Key | Type | Set by | Purpose |
+|-----|------|--------|---------|
+| `user_id` | string \| null | FastAPI (seeded) | Shopper's database ID — read by order and cart tools |
+| `auth_token` | string \| null | FastAPI (seeded) | Shopper's JWT — read by order and cart tools |
+| `product_context` | object \| null | FastAPI (seeded) | Product the shopper is currently viewing |
+| `candidates` | object | Discovery, Cart tools | Full product cards gathered this turn, keyed by product ID |
+| `display_ids` | list | Discovery, Cart tools | Product IDs to show as cards, in order |
+| `options` | list | Any tool | Quick-reply button labels |
+| `pending_action` | object \| null | Cart tools | A cart addition awaiting the shopper's confirmation |
+
+After the ADK run finishes, FastAPI reads `candidates`, `display_ids`, and `options` from session state and assembles them into the `products` and `options` fields of the response — without the agents ever formatting JSON.
+
+### The Cart — Human-in-the-Loop Two-Turn Flow
+
+Adding to the cart is the one action that changes real data, so it always requires the shopper's explicit confirmation. The Cart agent never adds an item unilaterally.
+
+![Cart Flow](docs/vera-cart-flow.svg)
+
+**Turn 1 — Propose:**
+1. The shopper says something like "add the boAt earbuds to my cart."
+2. The Cart agent calls `propose_add_to_cart(product_id)`.
+3. The tool checks stock and writes a `pending_action` to session state — but does **not** touch the cart.
+4. The agent asks the shopper to confirm; "Yes, add to cart" and "No thanks" buttons appear.
+
+**Turn 2 — Confirm:**
+1. The shopper taps "Yes, add to cart."
+2. The Cart agent calls `confirm_add_to_cart(product_id, quantity=1)`.
+3. The tool verifies a matching `pending_action` exists (a safety gate), then calls the Cart Service.
+4. The agent confirms the item is in the basket and offers "Go to checkout" and "Keep shopping."
+
+This two-layer safety design means even if the model misbehaves and tries to call `confirm_add_to_cart` without a prior proposal, the tool's own check prevents an unwanted purchase.
+
+### What Vera Can Do
+
+| Query | Example | What happens |
+|-------|---------|--------------|
+| Product search | "I want wireless earbuds under £40" | Discovery agent searches catalogue, returns product cards |
+| Clarifying questions | "I want a shirt" | Discovery agent asks follow-up questions via option buttons |
+| Product Q&A | On a product page | Advisor agent answers using that product's data |
+| Order history | "Where's my order?" (signed in) | Order agent fetches and summarises recent orders |
+| Cart addition | "Add this to my cart" | Cart agent runs the two-turn propose/confirm flow |
+| Policy questions | "What's your return policy?" | Advisor agent answers from its instruction — no tool call needed |
+| Greetings | "Hi" / "Hello" | Coordinator handles directly; shows quick-reply suggestion buttons |
+
+### Technical Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Agent framework | Google Agent Development Kit (ADK) 2.2 |
+| Language model | Mistral Large (`mistral-large-latest`) |
+| LLM bridge | LiteLLM (via ADK's `LiteLlm` wrapper) |
+| Session storage | `InMemorySessionService` (stateless per request; frontend re-sends history) |
+| Service calls | httpx async (internal Docker network) |
+| Structured output | Session-state bridge (no `output_schema` — agents use tools freely) |
 
 ---
 
 ## Search System
 
-The search engine is built entirely in Python and runs inside the Recommendation Service. It scores every product against the query and returns the top matches — no external search index is required.
+The search engine is built in Python inside the Recommendation Service. It scores every product against the query and returns the top matches — no external search index required.
 
-### How scoring works
-
-Each product receives a relevance score based on the following factors:
+### Scoring factors
 
 | Signal | Points |
 |--------|--------|
@@ -810,64 +590,58 @@ Each product receives a relevance score based on the following factors:
 | Search word at start of product name | +10 bonus |
 | Search word in sub-category | +22 per word |
 | Search word in main category | +15 per word |
-| Category alias match (see below) | +25 per word |
+| Category alias match | +25 per word |
 | Product is within the price ceiling | +40 bonus |
 | Product is well over the price ceiling | ×0.15 penalty |
 | Rating (tiebreaker) | rating × 4 |
-| Popularity (tiebreaker) | up to +5 (based on review count) |
+| Popularity (tiebreaker) | up to +5 |
 | Discount depth (tiebreaker) | up to +12 |
 
-Products with a score of zero are excluded. The remaining products are sorted by score and the top `top_k` are returned.
+### Price constraint parsing
+
+The engine automatically detects price limits in natural language:
+
+```
+"wireless headphones under £50"   → scores products priced ≤ £50
+"laptop below £400"               → scores laptops priced ≤ £400
+"yoga mat less than £25"          → scores mats priced ≤ £25
+```
+
+Patterns recognised: `under`, `below`, `less than`, `max`, `cheaper than`, `budget of` followed by an optional `£`/`$` and a number.
 
 ### Category aliases
 
-The engine maps common search words to their canonical category names, so searches like "headphones", "bluetooth", or "earphones" all correctly match the "TV, Audio & Cameras" category. Some examples:
+Common words are mapped to canonical categories so searches like "headphones", "bluetooth", or "earphones" all correctly match "TV, Audio & Cameras":
 
-| Search word | Maps to category |
-|------------|-----------------|
-| `headphones`, `earphones`, `bluetooth`, `wireless` | TV, Audio & Cameras |
+| Search word | Category |
+|-------------|----------|
+| `headphones`, `earphones`, `bluetooth` | TV, Audio & Cameras |
 | `kitchen`, `cookware` | Home & Kitchen |
 | `yoga`, `gym`, `workout`, `running` | Sports & Fitness |
 | `fridge`, `washing`, `microwave` | Appliances |
 | `skincare`, `makeup`, `perfume` | Beauty & Health |
-| `bag`, `backpack`, `suitcase` | Bags & Luggage |
-| `dog`, `cat`, `pet` | Pet Supplies |
 | `shoes`, `trainers`, `sneakers`, `boots` | Men's Shoes |
-
-### Price constraint parsing
-
-The engine automatically detects price limits in natural language queries:
-
-```
-"wireless headphones under £50"   → only scores products priced ≤ £50
-"laptop below £400"                → only scores laptops priced ≤ £400
-"yoga mat less than £25"           → only scores mats priced ≤ £25
-```
-
-Patterns recognised: `under`, `below`, `less than`, `max`, `cheaper than`, `budget of` — followed by an optional `£` or `$` symbol and a number.
 
 ### Hugging Face fallback (optional)
 
-If a `HF_API_TOKEN` is configured and a query returns fewer than 6 local results, the service makes a single call to the Hugging Face `sentence-transformers/all-MiniLM-L6-v2` model for semantic similarity scoring across the first 300 products. This is an optional enhancement — the local engine works well on its own for the vast majority of queries.
+If `HF_API_TOKEN` is configured and a query returns fewer than 6 local results, the service calls the Hugging Face `sentence-transformers/all-MiniLM-L6-v2` model for semantic similarity scoring. This is optional — the local engine works well on its own for most queries.
 
 ---
 
 ## Database Schema
 
-Each service owns its own isolated MongoDB database. No service reads another service's database directly.
+Each service owns its own isolated MongoDB database. No service reads another's database directly.
 
 ### `auth_db.users`
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `_id` | ObjectId | MongoDB auto-generated primary key |
+| `_id` | ObjectId | Auto-generated primary key |
 | `username` | String | Display name |
-| `email` | String | Unique — used as login identifier |
-| `password` | String | bcrypt hash — the plain-text password is never stored |
+| `email` | String | Unique — login identifier |
+| `password` | String | bcrypt hash — plain-text never stored |
 | `address` | String | Delivery address |
 | `phone_number` | String | Contact number |
-
----
 
 ### `products_db.products`
 
@@ -875,36 +649,32 @@ Each service owns its own isolated MongoDB database. No service reads another se
 |-------|------|-------|
 | `product_id` | Integer | Unique numeric ID (from source data) |
 | `name` | String | Full product name |
-| `main_category` | String | Top-level category (e.g. "TV, Audio & Cameras") |
-| `sub_category` | String | More specific category (e.g. "Headphones") |
-| `image` | String | URL to product image (hosted on Amazon CDN) |
-| `ratings` | Float | Average star rating (0.0 – 5.0) |
-| `no_of_ratings` | Integer | Total number of customer reviews |
+| `main_category` | String | Top-level category |
+| `sub_category` | String | More specific category |
+| `image` | String | Product image URL |
+| `ratings` | Float | Average star rating (0.0–5.0) |
+| `no_of_ratings` | Integer | Total customer reviews |
 | `actual_price` | Float | Original price in INR |
 | `discount_price` | Float | Discounted price in INR |
-| `stock` | Integer | Current stock level; updated atomically on cart operations |
+| `stock` | Integer | Current stock level; atomically updated on cart operations |
 
-All prices are stored in INR and converted to GBP at 106:1 in the frontend using the `toGBP()` utility.
-
----
+All prices are stored in INR and converted to GBP at 106:1 by the frontend's `toGBP()` utility and by Vera's services layer.
 
 ### `cart_db.carts`
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `user_id` | String | MongoDB `_id` of the user (as string) |
-| `items` | Array | Each item: `{ product_id, quantity, price }` |
+| `user_id` | String | MongoDB `_id` of the user |
+| `items` | Array | `[{ product_id, quantity, price }]` |
 | `updated_at` | DateTime | Last modification timestamp |
-
----
 
 ### `cart_db.transactions`
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `order_id` | Integer | Auto-incremented order number |
-| `user_id` | String | MongoDB `_id` of the user (as string) |
-| `product_cart` | Array | Snapshot of items at time of order: `{ product_id, name, quantity, price }` |
+| `user_id` | String | MongoDB `_id` of the user |
+| `product_cart` | Array | Snapshot at order time: `[{ product_id, name, quantity, price }]` |
 | `total_amount` | Float | Total order value in INR |
 | `payment_method` | String | `credit_card`, `paypal`, or `cod` |
 | `created_at` | DateTime | Order placement timestamp |
@@ -915,32 +685,38 @@ All prices are stored in INR and converted to GBP at 106:1 in the frontend using
 
 ### Products are not showing on first run
 
-The seed container needs MongoDB to be fully healthy before it can insert data. If products are missing, wait 30 seconds and refresh the page. If the problem persists, restart everything with a fresh database:
+The seed container needs MongoDB to be fully healthy before inserting data. Wait 30 seconds and refresh. If the problem persists, do a clean restart:
 
 ```bash
 docker-compose down -v
 docker-compose up --build
 ```
 
-The `-v` flag removes the MongoDB data volume, forcing a clean seed on the next start.
+The `-v` flag removes the MongoDB data volume, forcing a fresh seed on the next start.
 
 ---
 
 ### Vera says "I'm a little busy right now"
 
-This means the Gemini API has returned a 429 rate-limit error. The free tier allows approximately 1,500 requests per day. After extensive use (including development and testing), this quota can be exhausted.
+This means the Mistral API returned a rate-limit error (HTTP 429). Vera retries automatically up to 3 times with increasing delays. If it persists, your account may have hit a concurrent-request limit — wait a moment and try again.
 
-**Solutions:**
-- Wait for the quota to reset at midnight UTC — it will start working automatically.
-- Add billing to your Google AI Studio account at [aistudio.google.com](https://aistudio.google.com) to increase the limit significantly.
+---
+
+### Vera says "Sorry, I'm having a moment!"
+
+This is the fallback for unexpected errors from the ADK or Mistral. Check the assistant service logs for details:
+
+```bash
+docker logs assistant_service
+```
+
+Common causes: invalid `MISTRAL_API_KEY` in `.env`, Mistral API outage, or a network issue between the assistant container and the internet.
 
 ---
 
 ### Login stops working after a restart
 
-JWT tokens expire after 30 minutes. If you are logged in and the token expires, you will be redirected to the login page — simply sign in again.
-
-If you see an "invalid token" error immediately after logging in, it usually means the `JWT_SECRET_KEY` in your `.env` file changed between runs. The token was signed with the old key and cannot be verified with the new one. Clear your browser's localStorage (open DevTools → Application → Local Storage → clear all) and log in again.
+JWT tokens expire after 30 minutes. If you see "invalid token" immediately after logging in, the `JWT_SECRET_KEY` in your `.env` file may have changed between runs. Clear browser localStorage (DevTools → Application → Local Storage → clear all) and log in again.
 
 ---
 
@@ -951,7 +727,7 @@ Change the port in `docker-compose.yml`:
 ```yaml
 frontend:
   ports:
-    - "3001:80"   # change 3000 to any available port
+    - "3001:80"
 ```
 
 Then access the site at `http://localhost:3001`.
@@ -960,7 +736,7 @@ Then access the site at `http://localhost:3001`.
 
 ### A backend service fails to start
 
-Check the logs for that specific service:
+Check service-specific logs:
 
 ```bash
 docker logs products_service
@@ -971,26 +747,18 @@ docker logs assistant_service
 ```
 
 Common causes:
-- MongoDB is not yet healthy — the service will restart automatically once it is.
-- A required environment variable (`JWT_SECRET_KEY`, `GEMINI_API_KEY`) is missing from the `.env` file.
-- A Python dependency is missing from `requirements.txt` — run `docker-compose up --build` to rebuild the image.
+- MongoDB not yet healthy — the service will restart automatically
+- Missing environment variable (`JWT_SECRET_KEY`, `MISTRAL_API_KEY`) in `.env`
+- Missing Python dependency — run `docker-compose up --build` to rebuild
 
 ---
 
-### Making API calls directly (for development)
+### Direct service URLs (for development)
 
-When running the full stack with Docker Compose, the individual service ports are also exposed:
-
-| Service | Direct URL |
-|---------|-----------|
-| Products | `http://localhost:8001` |
-| Cart | `http://localhost:8002` |
-| Recommendation | `http://localhost:8003` |
-| Auth | `http://localhost:8004` |
-| AI Assistant | `http://localhost:8005` |
-
-You can also view the auto-generated API documentation for any service at:
-```
-http://localhost:8001/docs   # Products service Swagger UI
-http://localhost:8002/docs   # Cart service Swagger UI
-```
+| Service | Direct URL | Swagger UI |
+|---------|-----------|------------|
+| Auth | `http://localhost:8004` | `http://localhost:8004/docs` |
+| Products | `http://localhost:8001` | `http://localhost:8001/docs` |
+| Cart | `http://localhost:8002` | `http://localhost:8002/docs` |
+| Search | `http://localhost:8003` | `http://localhost:8003/docs` |
+| Assistant | `http://localhost:8005` | `http://localhost:8005/docs` |

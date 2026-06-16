@@ -129,6 +129,7 @@ const ChatWidget = () => {
   ]);
   const [loading, setLoading] = useState(false);
   const [productContext, setProductContext] = useState(null);
+  const [pendingProductId, setPendingProductId] = useState(null);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -175,7 +176,7 @@ const ChatWidget = () => {
       .slice(-12);
 
     const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     const userId = savedUser ? JSON.parse(savedUser).id : null;
 
     try {
@@ -185,7 +186,11 @@ const ChatWidget = () => {
         product_context: productContext || null,
         user_id: isAuthenticated && userId ? userId : null,
         auth_token: isAuthenticated && token ? token : null,
+        pending_product_id: pendingProductId || null,
       });
+
+      // Track the pending product for the next confirmation turn
+      setPendingProductId(res.data?.pending_product_id ?? null);
 
       setMessages(prev => [...prev, {
         role: 'assistant',

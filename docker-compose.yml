@@ -94,7 +94,7 @@ services:
       - ecommerce_network
     restart: unless-stopped
 
-  # ── AI Assistant service ──────────────────────────────────────────────────
+  # ── AI Assistant service (Google ADK + Mistral) ───────────────────────────
   assistant_service:
     build:
       context: ./ai_assistant
@@ -103,14 +103,17 @@ services:
     ports:
       - "8005:8000"
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyDohRzvBt70hQupVAqjplRYJgAt_EZ8uLU}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_MODEL_TAG=${MISTRAL_MODEL_TAG:-mistral-large-latest}
       - PRODUCTS_SERVICE_URL=http://products_service:8000
       - CART_SERVICE_URL=http://cart_service:8000
       - RECOMMENDATION_SERVICE_URL=http://recommendation_service:8000
+      - INR_TO_GBP_RATE=106
+      - TOOL_HTTP_TIMEOUT=12
     depends_on:
       - products_service
       - cart_service
+      - recommendation_service
     networks:
       - ecommerce_network
     restart: unless-stopped
