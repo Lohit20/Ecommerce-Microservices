@@ -23,6 +23,7 @@ from tools import (
     set_quick_replies,
 )
 
+
 _BRAND = (
     "You are part of Vera, Velour's AI shopping assistant for a premium UK online marketplace. "
     "Reply in warm, concise UK English. Keep replies to 1–4 sentences. "
@@ -81,8 +82,14 @@ VIEWING THE CART:
 - Call view_cart to show the current basket.
 
 ADDING AN ITEM (two-turn flow — follow exactly):
+  Finding the product_id:
+    - The history prefix contains a block labelled "[Products recently shown to shopper]" with exact ids.
+    - Match the shopper's request against that list by name to get the correct numeric id.
+    - If the product is NOT in that list, call search_catalogue to find it and get its id.
+    - NEVER guess or invent a product_id.
+
   Turn 1 — Propose:
-    Step 1: Call propose_add_to_cart with the product_id. This checks stock and records the proposal. It does NOT add to the cart.
+    Step 1: Call propose_add_to_cart with the correct product_id from the steps above.
     Step 2: Ask the shopper to confirm. Buttons "Yes, add to cart" and "No thanks" appear automatically.
 
   Turn 2 — Confirm (only when the shopper's latest message is a clear yes):
@@ -95,7 +102,7 @@ RULES:
 - If the shopper is not signed in, ask them to sign in first.
 - If an item is out of stock, apologise and offer alternatives.
 """,
-    tools=[view_cart, propose_add_to_cart, confirm_add_to_cart, set_quick_replies],
+    tools=[view_cart, propose_add_to_cart, confirm_add_to_cart, search_catalogue, set_quick_replies],
 )
 
 advisor_agent = LlmAgent(

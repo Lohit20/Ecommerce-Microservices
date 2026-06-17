@@ -82,10 +82,16 @@ class ChatRequest(BaseModel):
     user_id: Optional[str] = None
     auth_token: Optional[str] = None
     pending_product_id: Optional[int] = None
-    session_id: Optional[str] = None  # conversation persistence ID
+    session_id: Optional[str] = None       # conversation persistence ID
+    recent_products: Optional[List[dict]] = []  # product cards shown in previous turns
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+_CONFIRM_RE = re.compile(
+    r"^(yes|yeah|yep|yup|sure|ok|okay|do it|add it|add to cart|confirm|go ahead|please|yes please|absolutely|sounds good|perfect)[\s!.,]*$",
+    re.IGNORECASE,
+)
 
 
 def _serial(doc: dict) -> dict:
@@ -116,6 +122,65 @@ async def chat(req: ChatRequest):
             "products": [],
         }
 
+    # ── Fast-path: confirmation of a pending cart add ─────────────────────────
+    # Skips the full agent stack to avoid extra LLM calls and rate-limit errors.
+    if (
+        req.pending_product_id
+        and req.user_id
+        and req.auth_token
+        and _CONFIRM_RE.match(req.message.strip())
+    ):
+        result = await services.cart_add(
+            req.user_id,
+            [{"product_id": req.pending_product_id, "quantity": 1}],
+            req.auth_token,
+        )
+        if result.get("ok"):
+            response_data = {
+                "response": "Done! I've added that to your cart. What would you like to do next?",
+                "options": ["Go to checkout", "Keep shopping"],
+                "products": [],
+                "pending_product_id": None,
+            }
+        elif result.get("error") == "insufficient_stock":
+            response_data = {
+                "response": "Oh no — that item just sold out before I could add it. Would you like to find something similar?",
+                "options": ["Find similar items"],
+                "products": [],
+                "pending_product_id": None,
+            }
+        else:
+            response_data = {
+                "response": "I couldn't add that to your cart right now. Please try again or visit the product page directly.",
+                "options": [],
+                "products": [],
+                "pending_product_id": None,
+            }
+
+        # Save the confirmation turn to MongoDB history
+        if req.user_id and req.session_id:
+            try:
+                now = datetime.utcnow()
+                col = database.conversations()
+                await col.update_one(
+                    {"user_id": req.user_id, "session_id": req.session_id},
+                    {
+                        "$push": {
+                            "messages": {
+                                "$each": [
+                                    {"role": "user", "content": req.message, "products": [], "options": [], "ts": now},
+                                    {"role": "assistant", "content": response_data["response"], "products": [], "options": response_data["options"], "ts": now},
+                                ]
+                            }
+                        },
+                        "$set": {"updated_at": now},
+                    },
+                )
+            except Exception:
+                pass
+
+        return response_data
+
     runner: Runner = app.state.runner
     session_service: InMemorySessionService = app.state.session_service
 
@@ -124,24 +189,32 @@ async def chat(req: ChatRequest):
     adk_session_id = str(uuid.uuid4())
 
     # ── 2. Seed per-request context ───────────────────────────────────────
-    initial_state: dict = {
-        "user_id": req.user_id,
-        "auth_token": req.auth_token,
-        "product_context": req.product_context,
-        "candidates": {},
-        "display_ids": [],
-        "options": [],
-        "pending_action": None,
-    }
+    initial_candidates: dict = {}
+
+    # Carry forward products from previous turns so cart agent knows product_ids
+    for p in (req.recent_products or [])[:16]:
+        pid = str(p.get("product_id", ""))
+        if pid:
+            initial_candidates[pid] = p
 
     if req.product_context:
         try:
             card = services.shape_card(req.product_context)
             pid = str(card.get("product_id", ""))
             if pid:
-                initial_state["candidates"][pid] = card
+                initial_candidates[pid] = card
         except Exception:
             pass
+
+    initial_state: dict = {
+        "user_id": req.user_id,
+        "auth_token": req.auth_token,
+        "product_context": req.product_context,
+        "candidates": initial_candidates,
+        "display_ids": [],
+        "options": [],
+        "pending_action": None,
+    }
 
     if req.pending_product_id:
         initial_state["pending_action"] = {
@@ -158,13 +231,31 @@ async def chat(req: ChatRequest):
 
     # ── 3. Build message with history prefix ──────────────────────────────
     history_prefix = ""
+
+    # Product reference block — lets the cart agent look up correct product_ids
+    if initial_candidates:
+        prod_lines = []
+        for card in list(initial_candidates.values())[:16]:
+            pid = card.get("product_id")
+            name = (card.get("name") or "")[:60]
+            price = card.get("price", 0)
+            stock = card.get("stock", 0)
+            if pid:
+                prod_lines.append(f"id:{pid} | {name} | £{price:.2f} | stock:{stock}")
+        if prod_lines:
+            history_prefix += (
+                "[Products recently shown to shopper — use these EXACT ids for propose_add_to_cart]\n"
+                + "\n".join(prod_lines)
+                + "\n\n"
+            )
+
     if req.history:
         turns = req.history[-8:]
         lines = []
         for m in turns:
             label = "Customer" if m.role == "user" else "Vera"
             lines.append(f"{label}: {m.content}")
-        history_prefix = (
+        history_prefix += (
             "[Recent conversation — use this for context]\n"
             + "\n".join(lines)
             + "\n\n[Current message from customer]\n"

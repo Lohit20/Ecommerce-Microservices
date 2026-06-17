@@ -175,6 +175,19 @@ const ChatWidget = () => {
       .map(m => ({ role: m.role, content: m.content }))
       .slice(-12);
 
+    // Collect unique products seen this session so cart agent knows product IDs
+    const recentProducts = [];
+    const seenPids = new Set();
+    for (let i = messages.length - 1; i >= 0; i--) {
+      for (const p of (messages[i].products || [])) {
+        if (p.product_id && !seenPids.has(p.product_id)) {
+          recentProducts.push(p);
+          seenPids.add(p.product_id);
+        }
+      }
+      if (recentProducts.length >= 16) break;
+    }
+
     const savedUser = localStorage.getItem('user');
     const token = localStorage.getItem('authToken');
     const userId = savedUser ? JSON.parse(savedUser).id : null;
@@ -187,6 +200,7 @@ const ChatWidget = () => {
         user_id: isAuthenticated && userId ? userId : null,
         auth_token: isAuthenticated && token ? token : null,
         pending_product_id: pendingProductId || null,
+        recent_products: recentProducts,
       });
 
       // Track the pending product for the next confirmation turn
