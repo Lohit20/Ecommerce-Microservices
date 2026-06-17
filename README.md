@@ -19,6 +19,8 @@ The backend is composed of five independent FastAPI services. The frontend is a 
 9. [API Reference](#api-reference)
 10. [Frontend Pages](#frontend-pages)
 11. [AI Assistant — Vera](#ai-assistant--vera)
+    - [Agentic Architecture](#agentic-architecture)
+    - [Use Cases — Agent Flow Diagrams](#use-cases--agent-flow-diagrams)
 12. [Search System](#search-system)
 13. [Database Schema](#database-schema)
 14. [Troubleshooting](#troubleshooting)
@@ -563,6 +565,136 @@ This two-layer safety design means even if the model misbehaves and tries to cal
 | Cart addition | "Add this to my cart" | Cart agent runs the two-turn propose/confirm flow |
 | Policy questions | "What's your return policy?" | Advisor agent answers from its instruction — no tool call needed |
 | Greetings | "Hi" / "Hello" | Coordinator handles directly; shows quick-reply suggestion buttons |
+| Compound request | "Find earbuds and add the cheapest" | Discovery + Cart agents invoked in sequence by the Coordinator |
+
+---
+
+### Use Cases — Agent Flow Diagrams
+
+Each diagram shows the exact path a message takes through the multi-agent system: from the user's input through the Coordinator, into the specialist agent, through its tools, and back as a structured response.
+
+---
+
+#### UC-1 — Greeting
+
+The Coordinator recognises a greeting or small talk and handles it directly without delegating to any specialist. It calls `set_quick_replies` to surface the four main entry points as tappable buttons.
+
+![UC-1 Greeting](docs/uc-greeting.svg)
+
+**Agents involved:** Coordinator only  
+**Tools called:** `set_quick_replies`  
+**Output:** Warm welcome message + 4 quick-reply buttons (Find a product · My orders · Delivery & returns · Gift ideas)
+
+---
+
+#### UC-2 — Specific Product Search
+
+The shopper gives a clear query — optionally with a price limit. The Coordinator routes to the Discovery agent, which passes the query verbatim to the Search Service and writes the results into session state as product cards.
+
+![UC-2 Product Search](docs/uc-product-search.svg)
+
+**Agents involved:** Coordinator → Discovery  
+**Tools called:** `search_catalogue`  
+**Output:** Up to 8 product cards with prices in GBP, ratings, discounts + a highlight and follow-up question
+
+---
+
+#### UC-3 — Vague Search with Clarifying Question
+
+When a query is too broad (e.g. "I want a shirt"), the Discovery agent does not search immediately. It first calls `set_quick_replies` with sensible options. Once the shopper picks one, the next turn triggers a real search.
+
+![UC-3 Vague Search](docs/uc-vague-search.svg)
+
+**Agents involved:** Coordinator → Discovery (two turns)  
+**Tools called (turn 1):** `set_quick_replies`  
+**Tools called (turn 2):** `search_catalogue`  
+**Output (turn 1):** Clarifying question + option buttons · **(turn 2):** Product cards
+
+---
+
+#### UC-4 — Policy / Delivery / Returns Question
+
+Questions about Velour's policies are routed to the Advisor agent, which answers directly from its instruction. No tool call is needed — the policy facts are baked into the agent's prompt.
+
+![UC-4 Policy Question](docs/uc-policy.svg)
+
+**Agents involved:** Coordinator → Advisor  
+**Tools called:** None  
+**Output:** Direct answer (free delivery over £50 · 30-day returns · 2–5 day delivery · support contact)
+
+---
+
+#### UC-5 — Product Page Q&A
+
+When the shopper is on a product detail page, the frontend sends the full product record as `product_context`. The Advisor agent calls `lookup_product` to get complete details and answers questions about that specific item.
+
+![UC-5 Product Q&A](docs/uc-product-qa.svg)
+
+**Agents involved:** Coordinator → Advisor  
+**Tools called:** `lookup_product`  
+**Output:** Answer grounded in the actual product data (materials, specs, stock, price)
+
+---
+
+#### UC-6 — Order History (Signed In)
+
+The Order agent reads `user_id` and `auth_token` from session state (seeded by FastAPI at the start of the request), calls the Cart Service, and returns a summary of the three most recent orders.
+
+![UC-6 Order History](docs/uc-order-history.svg)
+
+**Agents involved:** Coordinator → Order  
+**Tools called:** `get_my_orders`  
+**Output:** Last 3 orders — order number, date, total in GBP, item names
+
+---
+
+#### UC-7 — Order History (Not Signed In)
+
+If no `user_id` or `auth_token` is present in session state, `get_my_orders` immediately returns `{ "logged_in": false }`. The Order agent asks the shopper to sign in and surfaces a quick-reply button.
+
+![UC-7 Order History — Not Signed In](docs/uc-order-not-signed-in.svg)
+
+**Agents involved:** Coordinator → Order  
+**Tools called:** `get_my_orders` (returns early)  
+**Output:** "Please sign in to view your orders" + [ Sign in to my account ] button
+
+---
+
+#### UC-8 — View Cart
+
+The Cart agent calls `view_cart`, which reads the shopper's basket from the Cart Service and returns a formatted summary including item count and estimated total in GBP.
+
+![UC-8 View Cart](docs/uc-view-cart.svg)
+
+**Agents involved:** Coordinator → Cart  
+**Tools called:** `view_cart`  
+**Output:** Cart contents with quantities and estimated total, or "your cart is empty"
+
+---
+
+#### UC-9 — Add to Cart (Two-Turn Flow)
+
+The safest use case. The Cart agent **never** adds an item in a single step — it always proposes first, waits for the shopper's explicit confirmation, then executes. See the [detailed cart flow diagram](#the-cart--human-in-the-loop-two-turn-flow) above for the full sequence.
+
+**Agents involved:** Coordinator → Cart (across two request turns)  
+**Tools called (turn 1):** `propose_add_to_cart` → writes `pending_action` to session state  
+**Tools called (turn 2):** `confirm_add_to_cart` → verifies pending action → calls Cart Service  
+**Output (turn 1):** "Add [product] for £X.XX?" + [ Yes, add to cart ] [ No thanks ]  
+**Output (turn 2):** "Done! It's in your cart 🛒" + [ Go to checkout ] [ Keep shopping ]
+
+---
+
+#### UC-10 — Compound Request (Multiple Agents in Sequence)
+
+A single message can require more than one specialist. The Coordinator recognises both intents and delegates to each agent in sequence — Discovery first to find the products, then Cart to propose adding the cheapest result.
+
+![UC-10 Compound Request](docs/uc-compound.svg)
+
+**Agents involved:** Coordinator → Discovery → Cart (same turn)  
+**Tools called:** `search_catalogue` (Discovery), then `propose_add_to_cart` (Cart)  
+**Output:** Product cards shown, then confirmation prompt for the cheapest item
+
+---
 
 ### Technical Stack
 
