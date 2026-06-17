@@ -36,6 +36,7 @@ const authApi = createApiClient('/api/auth');
 const productApi = createApiClient('/api/products');
 const cartApi = createApiClient('/api/cart', true);
 const RSApi = createApiClient('/api/search');
+const assistantAuthApi = createApiClient('/api/assistant', true);
 
 export const authService = {
   register: (userData) => authApi.post('/auth/register', userData),
@@ -64,4 +65,7 @@ export const recommendationService = {
 export const assistantService = {
   chat: (payload) => axios.post('/api/assistant/chat', payload),
   health: () => axios.get('/api/assistant/health'),
+  getConversations: (userId) => assistantAuthApi.get(`/conversations/${userId}`),
+  getConversation: (userId, sessionId) => assistantAuthApi.get(`/conversations/${userId}/${sessionId}`),
+  deleteConversation: (userId, sessionId) => assistantAuthApi.delete(`/conversations/${userId}/${sessionId}`),
 };

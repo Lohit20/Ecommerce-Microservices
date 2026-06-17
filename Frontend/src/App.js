@@ -11,6 +11,7 @@ import RegisterPage from './pages/RegisterPage';
 import CategoryPage from './pages/CategoryPage';
 import AccountPage from './pages/AccountPage';
 import AllProductsPage from './pages/AllProductsPage';
+import AssistantPage from './pages/AssistantPage';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './styles/Typography.css';
@@ -65,6 +66,40 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Inner shell — needs to be inside Router to use useLocation
+function AppShell() {
+  const location = useLocation();
+  const isAssistantPage = location.pathname === '/assistant';
+
+  return (
+    <div className="app">
+      <ScrollToTopOnNav />
+      <Header />
+      <main className="main-content">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/product/:id" element={<ProductPage />} />
+          <Route path="/shop" element={<AllProductsPage />} />
+          <Route path="/category/:category" element={<CategoryPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/assistant" element={<AssistantPage />} />
+          <Route path="/account" element={
+            <ProtectedRoute>
+              <AccountPage />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </main>
+      <Footer />
+      <ScrollButton />
+      {!isAssistantPage && <ChatWidget />}
+    </div>
+  );
+}
+
 function App() {
   // Log component mount for debugging
   useEffect(() => {
@@ -107,32 +142,8 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <SearchProvider>
-
           <Router>
-            <div className="app">
-              <ScrollToTopOnNav />
-              <Header />
-              <main className="main-content">
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/product/:id" element={<ProductPage />} />
-                  <Route path="/shop" element={<AllProductsPage />} />
-                  <Route path="/category/:category" element={<CategoryPage />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/checkout" element={<CheckoutPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route path="/account" element={
-                    <ProtectedRoute>
-                      <AccountPage />
-                    </ProtectedRoute>
-                  } />
-                </Routes>
-              </main>
-              <Footer />
-              <ScrollButton />
-              <ChatWidget />
-            </div>
+            <AppShell />
           </Router>
         </SearchProvider>
       </CartProvider>

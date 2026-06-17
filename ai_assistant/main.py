@@ -2,25 +2,49 @@ import os
 import re
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import List, Optional
 
 import google.genai.types as genai_types
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from jose import JWTError, jwt
 from pydantic import BaseModel
 
+import database
 import services
 
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 MISTRAL_MODEL_TAG = os.getenv("MISTRAL_MODEL_TAG", "mistral-large-latest")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecretkey_changeme_in_production")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+# ── Auth dependency ───────────────────────────────────────────────────────────
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=True)
+
+
+async def require_user_id(token: str = Depends(oauth2_scheme)) -> str:
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        return user_id
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
 
 # ── Startup / shutdown ────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from agents import vera_coordinator
+
+    await database.connect()
 
     app.state.session_service = InMemorySessionService()
     app.state.runner = Runner(
@@ -30,6 +54,7 @@ async def lifespan(app: FastAPI):
     )
     yield
     await services.close_client()
+    await database.close()
 
 
 app = FastAPI(title="Vera — Agentic AI Assistant (Google ADK + Mistral)", lifespan=lifespan)
@@ -44,6 +69,7 @@ app.add_middleware(
 
 # ── Request / response models ─────────────────────────────────────────────────
 
+
 class Message(BaseModel):
     role: str
     content: str
@@ -56,9 +82,19 @@ class ChatRequest(BaseModel):
     user_id: Optional[str] = None
     auth_token: Optional[str] = None
     pending_product_id: Optional[int] = None
+    session_id: Optional[str] = None  # conversation persistence ID
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _serial(doc: dict) -> dict:
+    doc.pop("_id", None)
+    return doc
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @app.get("/health")
 async def health():
@@ -83,11 +119,11 @@ async def chat(req: ChatRequest):
     runner: Runner = app.state.runner
     session_service: InMemorySessionService = app.state.session_service
 
-    # ── 1. Identify this request's session ────────────────────────────────
+    # ── 1. ADK session (always fresh per request) ─────────────────────────
     adk_user_id = req.user_id or "anon"
-    session_id = str(uuid.uuid4())
+    adk_session_id = str(uuid.uuid4())
 
-    # ── 2. Seed per-request context into fresh session state ──────────────
+    # ── 2. Seed per-request context ───────────────────────────────────────
     initial_state: dict = {
         "user_id": req.user_id,
         "auth_token": req.auth_token,
@@ -107,14 +143,20 @@ async def chat(req: ChatRequest):
         except Exception:
             pass
 
+    if req.pending_product_id:
+        initial_state["pending_action"] = {
+            "type": "add_to_cart",
+            "product_id": req.pending_product_id,
+        }
+
     await session_service.create_session(
         app_name="vera",
         user_id=adk_user_id,
-        session_id=session_id,
+        session_id=adk_session_id,
         state=initial_state,
     )
 
-    # ── 3. Build message with conversation history as context prefix ───────
+    # ── 3. Build message with history prefix ──────────────────────────────
     history_prefix = ""
     if req.history:
         turns = req.history[-8:]
@@ -135,7 +177,7 @@ async def chat(req: ChatRequest):
         parts=[genai_types.Part(text=full_message)],
     )
 
-    # ── 4. Run the agent (with retry on rate-limit or empty reply) ─────────
+    # ── 4. Run the agent (with retry on rate-limit) ───────────────────────
     reply = ""
     import asyncio, traceback
 
@@ -146,7 +188,7 @@ async def chat(req: ChatRequest):
         try:
             async for event in runner.run_async(
                 user_id=adk_user_id,
-                session_id=session_id,
+                session_id=adk_session_id,
                 new_message=new_message,
             ):
                 if event.is_final_response():
@@ -174,7 +216,7 @@ async def chat(req: ChatRequest):
     if not reply:
         reply = "I didn't quite catch that — could you rephrase?"
 
-    # ── 5. Read structured results from session state ──────────────────────
+    # ── 5. Read structured results from session state ─────────────────────
     options: List[str] = []
     products: List[dict] = []
     pending_product_id: Optional[int] = None
@@ -183,7 +225,7 @@ async def chat(req: ChatRequest):
         session = await session_service.get_session(
             app_name="vera",
             user_id=adk_user_id,
-            session_id=session_id,
+            session_id=adk_session_id,
         )
         if session and session.state:
             state = session.state
@@ -206,9 +248,112 @@ async def chat(req: ChatRequest):
     except Exception:
         pass
 
+    # ── 6. Persist conversation turn to MongoDB ───────────────────────────
+    if req.user_id and req.session_id:
+        try:
+            now = datetime.utcnow()
+            user_msg = {
+                "role": "user",
+                "content": req.message,
+                "products": [],
+                "options": [],
+                "ts": now,
+            }
+            asst_msg = {
+                "role": "assistant",
+                "content": reply,
+                "products": products,
+                "options": options,
+                "ts": now,
+            }
+            col = database.conversations()
+            existing = await col.find_one(
+                {"user_id": req.user_id, "session_id": req.session_id}
+            )
+            if existing:
+                await col.update_one(
+                    {"session_id": req.session_id},
+                    {
+                        "$push": {"messages": {"$each": [user_msg, asst_msg]}},
+                        "$set": {"updated_at": now},
+                    },
+                )
+            else:
+                title = req.message[:60] + ("…" if len(req.message) > 60 else "")
+                await col.insert_one(
+                    {
+                        "user_id": req.user_id,
+                        "session_id": req.session_id,
+                        "title": title,
+                        "messages": [user_msg, asst_msg],
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                )
+        except Exception:
+            pass  # never fail the chat response over a DB write
+
     return {
         "response": reply,
         "options": options,
         "products": products,
         "pending_product_id": pending_product_id,
     }
+
+
+# ── Conversation history endpoints ────────────────────────────────────────────
+
+
+@app.get("/conversations/{user_id}")
+async def list_conversations(
+    user_id: str,
+    current_user_id: str = Depends(require_user_id),
+):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    col = database.conversations()
+    cursor = col.find(
+        {"user_id": user_id},
+        {"messages": 0},  # exclude messages from list — only summary fields
+    ).sort("updated_at", -1).limit(50)
+
+    results = []
+    async for doc in cursor:
+        doc.pop("_id", None)
+        results.append(doc)
+    return results
+
+
+@app.get("/conversations/{user_id}/{session_id}")
+async def get_conversation(
+    user_id: str,
+    session_id: str,
+    current_user_id: str = Depends(require_user_id),
+):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    col = database.conversations()
+    doc = await col.find_one({"user_id": user_id, "session_id": session_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    doc.pop("_id", None)
+    return doc
+
+
+@app.delete("/conversations/{user_id}/{session_id}")
+async def delete_conversation(
+    user_id: str,
+    session_id: str,
+    current_user_id: str = Depends(require_user_id),
+):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    col = database.conversations()
+    result = await col.delete_one({"user_id": user_id, "session_id": session_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"deleted": True}

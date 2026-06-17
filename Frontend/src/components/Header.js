@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faShoppingCart, faUser, faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faShoppingCart, faUser, faBars, faTimes, faRobot } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
@@ -65,6 +65,10 @@ const Header = () => {
           </nav>
 
           <div className="header-actions">
+            <Link to="/assistant" className={`icon-btn ${isActive('/assistant')}`} aria-label="Chat with Vera">
+              <FontAwesomeIcon icon={faRobot} />
+            </Link>
+
             <Link to="/cart" className="icon-btn" aria-label="Cart">
               <FontAwesomeIcon icon={faShoppingCart} />
               {cart.totalItems > 0 && (

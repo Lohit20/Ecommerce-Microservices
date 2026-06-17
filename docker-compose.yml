@@ -110,10 +110,18 @@ services:
       - RECOMMENDATION_SERVICE_URL=http://recommendation_service:8000
       - INR_TO_GBP_RATE=106
       - TOOL_HTTP_TIMEOUT=12
+      - MONGO_URI=mongodb://mongodb:27017
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-supersecretkey_changeme_in_production}
+      - ALGORITHM=HS256
     depends_on:
-      - products_service
-      - cart_service
-      - recommendation_service
+      mongodb:
+        condition: service_healthy
+      products_service:
+        condition: service_started
+      cart_service:
+        condition: service_started
+      recommendation_service:
+        condition: service_started
     networks:
       - ecommerce_network
     restart: unless-stopped
